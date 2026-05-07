@@ -8,6 +8,7 @@ AI-powered ticket management system. Inbound emails become tickets, Claude class
 
 | # | Plan | Description |
 |---|------|-------------|
+| 00 | [Code Quality](./00-code-quality.md) | Prettier, ESLint strict, Husky, lint-staged, CI pipeline |
 | 01 | [Setup & Database](./01-setup-database.md) | Monorepo, TypeScript, Prisma schema, Docker, ENV validation |
 | 02 | [Authentication](./02-authentication.md) | express-session, login/logout, auth middleware, user roles |
 | 03 | [Inbound Email → Tickets](./03-inbound-email.md) | Postmark webhook, pg-boss queue, ticket creation, deduplication |
@@ -24,7 +25,7 @@ AI-powered ticket management system. Inbound emails become tickets, Claude class
 ## Dependencies
 
 ```
-01 → 02 → 03 → 04 → 07
+00 → 01 → 02 → 03 → 04 → 07
                 04 → 05 → 06
                      05 → 08
                 02 → 09

@@ -28,6 +28,14 @@ Monorepo with two separate apps:
 - **express-rate-limit** — rate limiting on AI endpoints
 - **Pino** — structured logging
 
+## Code Quality
+
+- **Prettier** — opinionated code formatter, single config at repo root, runs on save and pre-commit
+- **ESLint** — static analysis for TypeScript, React hooks rules, import order; shared flat config across client and server
+- **Husky** — git hooks manager; installs hooks automatically after `pnpm install`
+- **lint-staged** — runs Prettier + ESLint only on staged files (fast pre-commit, not full repo scan)
+- **tsc --noEmit** — TypeScript compilation check run in CI; catches type errors that ESLint misses
+
 ## Authentication
 
 - **express-session** + **connect-pg-simple** — database sessions stored in PostgreSQL

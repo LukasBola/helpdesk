@@ -268,6 +268,7 @@ Expected: container starts, `docker compose ps` shows `postgres` as healthy.
 ### Task 5: ENV validation
 
 **Files:**
+
 - Create: `server/src/env.ts`
 
 - [ ] **Step 1: Write failing test**

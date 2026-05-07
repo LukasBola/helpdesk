@@ -24,3 +24,11 @@ Build a ticket management system that uses AI to automatically classify, respond
 - Send replies back to the customer via email
 - Ticket change history (who did what and when)
 - Authentication — login and user roles
+
+## Code Quality
+
+- Consistent code formatting enforced automatically (Prettier)
+- Static analysis and error prevention (ESLint)
+- Pre-commit hooks that block commits with formatting or lint errors (Husky + lint-staged)
+- All rules shared across client and server from a single root config
+- TypeScript compilation check in CI (`tsc --noEmit`) — blocks merge on type errors
