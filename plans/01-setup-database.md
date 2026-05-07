@@ -414,6 +414,8 @@ model Ticket {
   id            String         @id @default(cuid())
   subject       String
   body          String
+  summary       String?
+  category      String?
   status        TicketStatus   @default(OPEN)
   priority      TicketPriority @default(MEDIUM)
   customerEmail String
@@ -736,4 +738,77 @@ npx shadcn@latest add button input label card badge table select
 ```bash
 git add client/
 git commit -m "feat: tailwind + shadcn/ui setup"
+```
+
+---
+
+### Task 11: Pino structured logging
+
+**Files:**
+- Create: `server/src/lib/logger.ts`
+- Modify: `server/src/middleware/errorHandler.ts`
+- Modify: `server/src/index.ts`
+
+- [ ] **Step 1: Install Pino**
+
+Run: `cd server && pnpm add pino pino-pretty && pnpm add -D @types/pino`
+
+Note: `pino-pretty` is for local dev only — production logs raw JSON.
+
+- [ ] **Step 2: Create `server/src/lib/logger.ts`**
+
+```typescript
+import pino from 'pino'
+import { env } from '../env'
+
+export const logger = pino({
+  level: env.NODE_ENV === 'production' ? 'info' : 'debug',
+  transport:
+    env.NODE_ENV !== 'production'
+      ? { target: 'pino-pretty', options: { colorize: true } }
+      : undefined,
+})
+```
+
+- [ ] **Step 3: Replace `console.error` in `server/src/middleware/errorHandler.ts`**
+
+```typescript
+import { Request, Response, NextFunction } from 'express'
+import { logger } from '../lib/logger'
+
+export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction) {
+  logger.error({ err }, 'Unhandled error')
+  res.status(500).json({ error: 'Internal server error' })
+}
+```
+
+- [ ] **Step 4: Use logger in `server/src/index.ts`**
+
+```typescript
+import './env'
+import { app } from './app'
+import { env } from './env'
+import { logger } from './lib/logger'
+import { getQueue } from './jobs/queue'
+import { registerEmailWorker } from './jobs/processEmail'
+
+async function main() {
+  const queue = await getQueue()
+  await registerEmailWorker(queue)
+  app.listen(env.PORT, () => {
+    logger.info({ port: env.PORT }, 'Server started')
+  })
+}
+
+main().catch(err => {
+  logger.error({ err }, 'Failed to start server')
+  process.exit(1)
+})
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add server/src/lib/logger.ts server/src/middleware/errorHandler.ts server/src/index.ts
+git commit -m "feat: pino structured logging — JSON in production, pretty in dev"
 ```

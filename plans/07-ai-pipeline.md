@@ -497,12 +497,15 @@ describe('POST /api/tickets/:id/classify', () => {
 })
 
 describe('POST /api/tickets/:id/summarize', () => {
-  it('returns summary', async () => {
+  it('returns summary and persists it on the ticket', async () => {
     const res = await request(app)
       .post(`/api/tickets/${ticketId}/summarize`)
       .set('Cookie', cookie)
     expect(res.status).toBe(200)
     expect(res.body.summary).toBeTruthy()
+
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } })
+    expect(ticket?.summary).toBe('Student cannot access purchased course.')
   })
 })
 
@@ -542,7 +545,7 @@ router.post('/classify', async (req, res) => {
   const result = await classifyTicket(ticket, ticket.id)
   await prisma.ticket.update({
     where: { id: ticket.id },
-    data: { priority: result.priority },
+    data: { priority: result.priority, category: result.category },
   })
   res.json(result)
 })
@@ -552,6 +555,7 @@ router.post('/summarize', async (req, res) => {
   if (!ticket) { res.status(404).json({ error: 'Not found' }); return }
 
   const summary = await summarizeTicket(ticket, ticket.id)
+  await prisma.ticket.update({ where: { id: ticket.id }, data: { summary } })
   res.json({ summary })
 })
 

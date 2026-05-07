@@ -91,7 +91,8 @@ export const sessionMiddleware = session({
 Create `server/src/middleware/auth.test.ts`:
 
 ```typescript
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import type { MockInstance } from 'vitest'
 import { Request, Response, NextFunction } from 'express'
 import { requireAuth, requireRole } from './auth'
 
@@ -99,7 +100,7 @@ function mockReq(session: Partial<{ userId: string; role: string }> = {}): Reque
   return { session } as unknown as Request
 }
 
-function mockRes(): { status: jest.Mock; json: jest.Mock } & Response {
+function mockRes(): { status: MockInstance; json: MockInstance } & Response {
   const res = {} as Response
   res.status = vi.fn().mockReturnValue(res)
   res.json = vi.fn().mockReturnValue(res)

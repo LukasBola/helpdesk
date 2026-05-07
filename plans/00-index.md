@@ -17,7 +17,9 @@ AI-powered ticket management system. Inbound emails become tickets, Claude class
 | 07 | [AI Pipeline](./07-ai-pipeline.md) | Classification, summary, suggested replies, ai_interactions log |
 | 08 | [Email Replies](./08-email-replies.md) | Resend outbound, reply threading, agent approval flow |
 | 09 | [User Management](./09-user-management.md) | Admin CRUD for users, roles, blocking |
-| 10 | [Knowledge Base](./10-knowledge-base.md) | pgvector embeddings, RAG retrieval for reply context |
+| ~~10~~ | ~~Knowledge Base~~ | ~~pgvector embeddings, RAG~~ — **pominięte** (wymagałoby OpenAI API key) |
+| 11 | [E2E Tests](./11-e2e-playwright.md) | Playwright — login, reply flow, role restrictions (15–25 tests) |
+| 12 | [AI Eval Suite](./12-promptfoo-evals.md) | promptfoo nightly evals — classification, summary, reply quality checks |
 
 ## Dependencies
 
@@ -26,7 +28,7 @@ AI-powered ticket management system. Inbound emails become tickets, Claude class
                 04 → 05 → 06
                      05 → 08
                 02 → 09
-                07 → 10 (optional, can come after 07)
+01–09 → 11 (E2E wymaga działającej aplikacji)
 ```
 
 Each plan produces working, testable software on its own before the next begins.
