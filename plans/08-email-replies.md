@@ -27,6 +27,7 @@ server/src/
 ### Task 1: Email service
 
 **Files:**
+
 - Create: `server/src/services/emailService.ts`
 
 - [ ] **Step 1: Install Resend SDK**
@@ -129,6 +130,7 @@ git commit -m "feat: email service — Resend integration with plus-address thre
 ### Task 2: Reply route
 
 **Files:**
+
 - Create: `server/src/routes/replies.ts`
 
 - [ ] **Step 1: Write failing integration tests**
@@ -326,6 +328,7 @@ git commit -m "feat: reply endpoint — send via Resend, save record, advance st
 ### Task 3: Reply UI
 
 **Files:**
+
 - Modify: `client/src/pages/TicketPage.tsx`
 
 - [ ] **Step 1: Add reply form to `TicketPage.tsx`**

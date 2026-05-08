@@ -39,6 +39,7 @@ helpdesk/
 ### Task 1: Monorepo root
 
 **Files:**
+
 - Create: `package.json`
 - Create: `pnpm-workspace.yaml`
 
@@ -75,6 +76,7 @@ Run: `pnpm install`
 ### Task 2: Server package
 
 **Files:**
+
 - Create: `server/package.json`
 - Create: `server/tsconfig.json`
 
@@ -138,6 +140,7 @@ Run: `cd server && pnpm install`
 ### Task 3: Client package
 
 **Files:**
+
 - Create: `client/package.json`
 - Create: `client/tsconfig.json`
 - Create: `client/vite.config.ts`
@@ -218,6 +221,7 @@ Run: `cd client && pnpm install`
 ### Task 4: Docker Compose
 
 **Files:**
+
 - Create: `docker-compose.yml`
 - Create: `.env.example`
 
@@ -346,6 +350,7 @@ git commit -m "feat: zod env validation — server refuses to start with missing
 ### Task 6: Prisma schema
 
 **Files:**
+
 - Create: `server/prisma/schema.prisma`
 
 - [ ] **Step 1: Initialise Prisma**
@@ -528,6 +533,7 @@ git commit -m "feat: prisma schema with all domain models and initial migration"
 ### Task 7: Prisma client singleton
 
 **Files:**
+
 - Create: `server/src/db.ts`
 
 - [ ] **Step 1: Create `server/src/db.ts`**
@@ -553,6 +559,7 @@ if (process.env.NODE_ENV !== 'production') {
 ### Task 8: Express app bootstrap
 
 **Files:**
+
 - Create: `server/src/app.ts`
 - Create: `server/src/index.ts`
 
@@ -624,6 +631,7 @@ git commit -m "feat: express app bootstrap with health endpoint"
 ### Task 9: testcontainers setup
 
 **Files:**
+
 - Create: `server/src/test/setup.ts`
 - Create: `server/vitest.config.ts`
 
@@ -687,11 +695,13 @@ git commit -m "feat: testcontainers global setup for integration tests"
 ### Task 10: Tailwind + shadcn/ui setup
 
 **Files:**
+
 - Modify: `client/`
 
 - [ ] **Step 1: Init Tailwind**
 
 Run:
+
 ```bash
 cd client
 pnpm add -D tailwindcss postcss autoprefixer
@@ -722,6 +732,7 @@ export default {
 Run: `cd client && npx shadcn@latest init`
 
 When prompted:
+
 - Style: Default
 - Base color: Slate
 - CSS variables: Yes
@@ -729,6 +740,7 @@ When prompted:
 - [ ] **Step 5: Add core components**
 
 Run:
+
 ```bash
 cd client
 npx shadcn@latest add button input label card badge table select
@@ -746,6 +758,7 @@ git commit -m "feat: tailwind + shadcn/ui setup"
 ### Task 11: Pino structured logging
 
 **Files:**
+
 - Create: `server/src/lib/logger.ts`
 - Modify: `server/src/middleware/errorHandler.ts`
 - Modify: `server/src/index.ts`

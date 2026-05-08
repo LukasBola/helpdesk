@@ -31,6 +31,7 @@ helpdesk/
 ### Task 1: Prettier
 
 **Files:**
+
 - Create: `.prettierrc`
 - Create: `.prettierignore`
 
@@ -100,11 +101,13 @@ git commit -m "chore: add prettier config"
 ### Task 2: ESLint (strict)
 
 **Files:**
+
 - Create: `eslint.config.js`
 
 - [ ] **Step 1: Install ESLint and plugins**
 
 Run:
+
 ```bash
 pnpm add -D -w \
   eslint \
@@ -220,6 +223,7 @@ git commit -m "chore: add eslint strict config with typescript-eslint and react-
 ### Task 3: Husky + lint-staged
 
 **Files:**
+
 - Modify: `package.json`
 - Create: `.husky/pre-commit`
 
@@ -287,6 +291,7 @@ git commit -m "chore: husky pre-commit hook with lint-staged"
 ### Task 4: CI pipeline (lint + typecheck + test)
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 
 - [ ] **Step 1: Create `.github/workflows/ci.yml`**

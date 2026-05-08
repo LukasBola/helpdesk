@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Nightly eval suite using promptfoo that runs ~50 hand-verified ticket samples through the three Claude prompts (classification, summary, suggested reply) and checks output *properties* — not exact text. Detects prompt regressions when the model or prompts change.
+**Goal:** Nightly eval suite using promptfoo that runs ~50 hand-verified ticket samples through the three Claude prompts (classification, summary, suggested reply) and checks output _properties_ — not exact text. Detects prompt regressions when the model or prompts change.
 
 **Architecture:** promptfoo reads `promptfooconfig.yaml`, calls the live Claude API against each test case, and checks assertions. No mocks — this is the real model. Runs nightly via GitHub Actions, NOT on every PR (keeps CI fast). Results published as HTML report artifact.
 
@@ -37,6 +37,7 @@ evals/
 - [ ] **Step 1: Install promptfoo**
 
 Run from repo root:
+
 ```bash
 pnpm add -D -w promptfoo
 ```
@@ -60,6 +61,7 @@ git commit -m "chore: add promptfoo dependency"
 ### Task 2: Prompt templates
 
 **Files:**
+
 - Create: `evals/prompts/classify.txt`
 - Create: `evals/prompts/summarize.txt`
 - Create: `evals/prompts/suggest-reply.txt`
@@ -115,6 +117,7 @@ git commit -m "feat: promptfoo prompt templates matching aiService.ts"
 ### Task 3: Classification eval dataset
 
 **Files:**
+
 - Create: `evals/datasets/classify.csv`
 
 - [ ] **Step 1: Create `evals/datasets/classify.csv`**
@@ -155,6 +158,7 @@ git commit -m "feat: classification eval dataset — 20 hand-verified tickets"
 ### Task 4: Summary eval dataset
 
 **Files:**
+
 - Create: `evals/datasets/summarize.csv`
 
 - [ ] **Step 1: Create `evals/datasets/summarize.csv`**
@@ -190,6 +194,7 @@ git commit -m "feat: summary eval dataset — 15 samples with hallucination chec
 ### Task 5: Suggested reply eval dataset
 
 **Files:**
+
 - Create: `evals/datasets/suggest-reply.csv`
 
 - [ ] **Step 1: Create `evals/datasets/suggest-reply.csv`**
@@ -225,6 +230,7 @@ git commit -m "feat: suggested reply eval dataset — 15 samples with safety and
 ### Task 6: promptfoo config
 
 **Files:**
+
 - Create: `evals/promptfooconfig.yaml`
 
 - [ ] **Step 1: Create `evals/promptfooconfig.yaml`**
@@ -257,7 +263,7 @@ tests:
           const valid = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
           // output is raw text — check it contains one of the enum values
           return valid.some(v => output.includes(v));
-        description: "priority must be a valid enum value"
+        description: 'priority must be a valid enum value'
 
   # --- Summary suite ---
   - description: Summary eval
@@ -269,17 +275,17 @@ tests:
         value: |
           // Must be concise — under 500 chars
           return output.length < 500;
-        description: "summary must be under 500 chars"
+        description: 'summary must be under 500 chars'
       - type: not-contains
-        value: "hallucinate"
-        description: "summary must not contain forbidden words"
+        value: 'hallucinate'
+        description: 'summary must not contain forbidden words'
       - type: javascript
         value: |
           // Must not invent prices — no dollar amounts not in the input
           const dollarInOutput = output.match(/\$[\d.]+/g) || [];
           const dollarInInput = (vars.body + vars.subject).match(/\$[\d.]+/g) || [];
           return dollarInOutput.every(d => dollarInInput.includes(d));
-        description: "summary must not hallucinate prices"
+        description: 'summary must not hallucinate prices'
 
   # --- Suggested reply suite ---
   - description: Suggested reply eval
@@ -292,22 +298,22 @@ tests:
           const mustNotContain = vars.must_not_contain.split(',').map(s => s.trim().toLowerCase());
           const lower = output.toLowerCase();
           return mustNotContain.every(word => !lower.includes(word));
-        description: "reply must not contain forbidden phrases"
+        description: 'reply must not contain forbidden phrases'
       - type: javascript
         value: |
           // Must not leak data from other tickets — no 'other customers' or 'other tickets' references
           const lower = output.toLowerCase();
           return !lower.includes('other customer') && !lower.includes('other ticket');
-        description: "reply must not reference other customers or tickets"
+        description: 'reply must not reference other customers or tickets'
       - type: javascript
         value: |
           // Must be at least 3 sentences — replies should not be dismissive one-liners
           const sentences = output.match(/[^.!?]+[.!?]+/g) || [];
           return sentences.length >= 3;
-        description: "reply must be at least 3 sentences"
+        description: 'reply must be at least 3 sentences'
       - type: llm-rubric
-        value: "The reply is polite, professional, and empathetic. It does not contain rude, dismissive, or offensive language."
-        description: "reply tone must be polite and professional"
+        value: 'The reply is polite, professional, and empathetic. It does not contain rude, dismissive, or offensive language.'
+        description: 'reply tone must be polite and professional'
 ```
 
 - [ ] **Step 2: Run evals locally to verify config is valid**
@@ -330,6 +336,7 @@ git commit -m "feat: promptfoo eval config — 3 prompt suites with property ass
 ### Task 7: Nightly CI workflow
 
 **Files:**
+
 - Create: `.github/workflows/evals.yml`
 
 - [ ] **Step 1: Create `.github/workflows/evals.yml`**
@@ -339,8 +346,8 @@ name: AI Eval Suite (nightly)
 
 on:
   schedule:
-    - cron: '0 3 * * *'   # 3am UTC every night
-  workflow_dispatch:       # allow manual trigger
+    - cron: '0 3 * * *' # 3am UTC every night
+  workflow_dispatch: # allow manual trigger
 
 jobs:
   evals:

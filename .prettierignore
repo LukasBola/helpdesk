@@ -1,0 +1,28 @@
+node_modules
+dist
+build
+.next
+coverage
+
+# Playwright output
+playwright-report
+test-results
+
+# Prisma — auto-generated migrations and client
+prisma/migrations/
+prisma/generated/
+
+# Fixtures — recorded API responses, do not reformat
+**/__fixtures__/
+
+# promptfoo eval datasets
+evals/datasets/
+
+# Husky shell scripts
+.husky/
+
+# Env files
+.env*
+
+# Lockfile
+pnpm-lock.yaml

@@ -35,6 +35,7 @@ client/src/
 ### Task 1: Ticket hooks
 
 **Files:**
+
 - Create: `client/src/hooks/useTickets.ts`
 - Create: `client/src/hooks/useTicket.ts`
 
@@ -54,7 +55,14 @@ vi.mock('../lib/api', () => ({
     get: vi.fn().mockResolvedValue({
       data: {
         tickets: [
-          { id: 't1', subject: 'Test', status: 'OPEN', priority: 'MEDIUM', customerEmail: 'c@test.com', createdAt: new Date().toISOString() },
+          {
+            id: 't1',
+            subject: 'Test',
+            status: 'OPEN',
+            priority: 'MEDIUM',
+            customerEmail: 'c@test.com',
+            createdAt: new Date().toISOString(),
+          },
         ],
         total: 1,
         page: 1,
@@ -179,8 +187,7 @@ export function useTicket(id: string) {
 export function useUpdateTicket(id: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { status?: string; priority?: string }) =>
-      api.patch(`/tickets/${id}`, data),
+    mutationFn: (data: { status?: string; priority?: string }) => api.patch(`/tickets/${id}`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tickets', id] })
       qc.invalidateQueries({ queryKey: ['tickets'] })
@@ -206,6 +213,7 @@ git commit -m "feat: useTickets and useTicket query hooks"
 ### Task 2: Status and priority badges
 
 **Files:**
+
 - Create: `client/src/components/TicketStatusBadge.tsx`
 - Create: `client/src/components/TicketPriorityBadge.tsx`
 
@@ -305,6 +313,7 @@ git commit -m "feat: ticket status and priority badge components"
 ### Task 3: Tickets list page
 
 **Files:**
+
 - Create: `client/src/components/TicketFilters.tsx`
 - Create: `client/src/pages/TicketsPage.tsx`
 
@@ -479,6 +488,7 @@ git commit -m "feat: ticket list page with filters and pagination"
 ### Task 4: Ticket detail page
 
 **Files:**
+
 - Create: `client/src/components/TicketHistory.tsx`
 - Create: `client/src/pages/TicketPage.tsx`
 

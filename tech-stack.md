@@ -3,6 +3,7 @@
 ## Structure
 
 Monorepo with two separate apps:
+
 - `/client` — React frontend
 - `/server` — Express backend
 
@@ -72,7 +73,7 @@ Standard tests for Express route handlers, Prisma queries, Zod schemas, and Reac
 Limited to critical user flows only: agent logs in, opens a ticket, reviews AI-suggested reply, approves and sends. Also covers role restrictions (agent cannot access admin pages). Kept small on purpose — E2E tests are slow and expensive to maintain.
 
 **AI eval suite (promptfoo — nightly)**
-LLMs are non-deterministic, so standard unit tests are not enough. The eval suite runs ~50-200 hand-verified ticket samples through Claude and checks output *properties*, not exact text — e.g. "classification is one of the valid enum values", "summary does not hallucinate a price", "reply tone is polite". Detects prompt regressions when the model is updated or prompts are changed. Runs nightly to keep CI fast.
+LLMs are non-deterministic, so standard unit tests are not enough. The eval suite runs ~50-200 hand-verified ticket samples through Claude and checks output _properties_, not exact text — e.g. "classification is one of the valid enum values", "summary does not hallucinate a price", "reply tone is polite". Detects prompt regressions when the model is updated or prompts are changed. Runs nightly to keep CI fast.
 
 **AI cached replay (fixtures)**
 Real Claude responses are recorded to `__fixtures__/claude/*.json`. Unit and integration tests replay these fixtures instead of calling the real API — zero cost, deterministic, fast. Fixtures are updated manually when prompts change intentionally.

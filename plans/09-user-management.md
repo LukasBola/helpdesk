@@ -31,6 +31,7 @@ client/src/
 ### Task 1: Users API
 
 **Files:**
+
 - Create: `server/src/routes/users.ts`
 
 - [ ] **Step 1: Write failing integration tests**
@@ -99,10 +100,12 @@ describe('GET /api/users', () => {
 
 describe('POST /api/users', () => {
   it('creates a new agent', async () => {
-    const res = await request(app)
-      .post('/api/users')
-      .set('Cookie', adminCookie)
-      .send({ email: 'new-agent@test.com', name: 'New Agent', password: 'securePass1', role: 'AGENT' })
+    const res = await request(app).post('/api/users').set('Cookie', adminCookie).send({
+      email: 'new-agent@test.com',
+      name: 'New Agent',
+      password: 'securePass1',
+      role: 'AGENT',
+    })
     expect(res.status).toBe(201)
     expect(res.body.email).toBe('new-agent@test.com')
     expect(res.body.passwordHash).toBeUndefined()
@@ -258,6 +261,7 @@ git commit -m "feat: admin user management API — list, create, update, block"
 ### Task 2: Users frontend
 
 **Files:**
+
 - Create: `client/src/hooks/useUsers.ts`
 - Create: `client/src/pages/UsersPage.tsx`
 
@@ -289,8 +293,12 @@ export function useUsers() {
 export function useCreateUser() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { email: string; name: string; password: string; role: 'AGENT' | 'ADMIN' }) =>
-      api.post('/users', data),
+    mutationFn: (data: {
+      email: string
+      name: string
+      password: string
+      role: 'AGENT' | 'ADMIN'
+    }) => api.post('/users', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   })
 }
