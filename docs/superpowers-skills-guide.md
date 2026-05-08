@@ -60,6 +60,34 @@ Wszystkie skille z podziałem na fazy pracy. Napisane dla junior deva / QA.
 |-------|-----------------|------------|-------------------|
 | `/finishing-a-development-branch` | Pomaga zdecydować co zrobić z gotową gałęzią — merge, PR, cleanup | Feature skończona, testy przechodzą, chcesz mergować | `/finishing-a-development-branch` feature/auth jest gotowy |
 
+### Co zrobić z worktree po skończeniu?
+
+Po zakończeniu implementacji w worktree wywołujesz `/finishing-a-development-branch` — skill sam pyta co chcesz zrobić:
+
+1. **Merge do main** — scal zmiany z worktree do głównego brancha
+2. **Pull Request** — stwórz PR na GitHubie
+3. **Cleanup** — usuń worktree i branch
+
+Pełny cykl z worktree:
+
+```
+/using-git-worktrees feature/auth
+        ↓
+/subagent-driven-development plans/02-authentication.md
+        ↓
+(implementacja skończona, testy przechodzą)
+        ↓
+/finishing-a-development-branch   <- merge / PR / cleanup
+```
+
+### Czy `/subagent-driven-development` automatycznie tworzy worktree?
+
+**Nie.** Worktree trzeba stworzyć explicite przez `/using-git-worktrees` przed odpaleniem planu.
+
+Bez worktree subagent pracuje bezpośrednio na twoim aktualnym branchu (zazwyczaj `main`) — jeśli coś pójdzie nie tak w połowie planu, masz częściowo zaimplementowany kod na głównym branchu.
+
+Worktree = osobna kopia repo w osobnym katalogu. Subagent robi zmiany tam, a `main` zostaje nienaruszony dopóki nie zdecydujesz się mergować.
+
 ---
 
 ## Narzędziowe
@@ -108,3 +136,77 @@ Jeśli piszesz test PRZED kodem i widzisz RED — wiesz że test faktycznie coś
 
 Nasze plany mają TDD wbudowane w kroki — dlatego `/executing-plans` wystarczy.
 Gdy plan nie ma kroków TDD → dodaj `/test-driven-development` przed promptem.
+
+---
+
+## Real Life Templates
+
+### Sytuacja 1: Plan MA już kroki TDD (jak nasze plany w `/plans/`)
+
+```text
+/using-git-worktrees feature/NAZWA-FEATURE
+
+Kiedy worktree będzie gotowy:
+
+/subagent-driven-development plans/NUMER-NAZWA-PLANU.md
+```
+
+Po skończeniu implementacji:
+
+```text
+/requesting-code-review
+Sprawdź zmiany wprowadzone podczas implementacji plans/NUMER-NAZWA-PLANU.md
+
+Kiedy review będzie gotowe:
+
+/finishing-a-development-branch
+```
+
+---
+
+### Sytuacja 2: Plan NIE MA kroków TDD — chcę je wymusić
+
+```text
+/using-git-worktrees feature/NAZWA-FEATURE
+
+Kiedy worktree będzie gotowy:
+
+/test-driven-development
+/subagent-driven-development plans/NUMER-NAZWA-PLANU.md
+
+Dla każdego taska który pisze kod: zanim zaczniesz implementację napisz najpierw failing test, uruchom go żeby potwierdzić RED, dopiero potem implementuj.
+```
+
+Po skończeniu implementacji:
+
+```text
+/requesting-code-review
+Sprawdź zmiany wprowadzone podczas implementacji plans/NUMER-NAZWA-PLANU.md
+
+Kiedy review będzie gotowe:
+
+/finishing-a-development-branch
+```
+
+---
+
+### Przykład dla naszego projektu — Plan 02 (auth, ma TDD)
+
+```text
+/using-git-worktrees feature/authentication
+
+Kiedy worktree będzie gotowy:
+
+/subagent-driven-development plans/02-authentication.md
+```
+
+Po skończeniu implementacji:
+
+```text
+/requesting-code-review
+Sprawdź zmiany wprowadzone podczas implementacji plans/02-authentication.md
+
+Kiedy review będzie gotowe:
+
+/finishing-a-development-branch
+```
