@@ -114,6 +114,8 @@ lub
         |
 /requesting-code-review     <- Sprawdź jakość przed mergem
         |
+/verification-before-completion  <- Dowód że działa (testy, lint, typecheck)
+        |
 /finishing-a-development-branch  <- Merguj / stwórz PR / cleanup
 ```
 
@@ -157,7 +159,11 @@ Po skończeniu implementacji:
 /requesting-code-review
 Sprawdź zmiany wprowadzone podczas implementacji plans/NUMER-NAZWA-PLANU.md
 
-Kiedy review będzie gotowe:
+Kiedy review będzie gotowe i poprawki wdrożone:
+
+/verification-before-completion
+
+Kiedy weryfikacja przejdzie:
 
 /finishing-a-development-branch
 ```
@@ -183,7 +189,11 @@ Po skończeniu implementacji:
 /requesting-code-review
 Sprawdź zmiany wprowadzone podczas implementacji plans/NUMER-NAZWA-PLANU.md
 
-Kiedy review będzie gotowe:
+Kiedy review będzie gotowe i poprawki wdrożone:
+
+/verification-before-completion
+
+Kiedy weryfikacja przejdzie:
 
 /finishing-a-development-branch
 ```
@@ -206,7 +216,11 @@ Po skończeniu implementacji:
 /requesting-code-review
 Sprawdź zmiany wprowadzone podczas implementacji plans/02-authentication.md
 
-Kiedy review będzie gotowe:
+Kiedy review będzie gotowe i poprawki wdrożone:
+
+/verification-before-completion
+
+Kiedy weryfikacja przejdzie:
 
 /finishing-a-development-branch
 ```

@@ -51,13 +51,20 @@ Po skończeniu implementacji:
 /requesting-code-review
 Sprawdź zmiany wprowadzone podczas implementacji plans/00-code-quality.md
 
-Kiedy review będzie gotowe:
+Kiedy review będzie gotowe i poprawki wdrożone:
+
+/verification-before-completion
+
+Kiedy weryfikacja przejdzie:
 
 /finishing-a-development-branch
 ```
 
 **Dlaczego `/requesting-code-review` przed mergem?**
 Claude sprawdza czy konfiguracja jest kompletna i poprawna — czy czegoś nie brakuje w ESLint config, czy Husky hook faktycznie blokuje złe commity, czy CI pipeline ma wszystkie wymagane kroki. Lepiej wyłapać to teraz niż po mergu do `main`.
+
+**Co robi `/verification-before-completion`?**
+Uruchamia testy, lint i prettier --check, pokazuje rzeczywisty output z exit code. Żadnych twierdzeń "powinno działać" — tylko twarde dowody że działa. Skill wymusza to przed każdym commitem/PR.
 
 **Co robi `/finishing-a-development-branch`?**
 Pyta co zrobić z gotowym worktree — możesz wybrać merge do `main`, stworzenie PR na GitHubie, lub cleanup (usunięcie brancha jeśli coś poszło nie tak).
