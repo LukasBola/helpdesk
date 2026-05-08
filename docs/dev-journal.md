@@ -19,6 +19,12 @@ Kiedy worktree będzie gotowy:
 **Dlaczego `/using-git-worktrees`?**
 Tworzy odizolowaną kopię repo w osobnym katalogu. Wszystkie zmiany lądują tam — `main` zostaje nienaruszony. Jeśli coś pójdzie nie tak w połowie planu, możesz po prostu usunąć worktree bez konsekwencji.
 
+**Czy trzeba najpierw utworzyć branch?**
+Nie. `/using-git-worktrees feature/code-quality` tworzy branch i worktree jednocześnie — nie trzeba robić `git checkout -b` wcześniej. Pod spodem wykonuje:
+```bash
+git worktree add -b feature/code-quality ../helpdesk-code-quality
+```
+
 **Dlaczego `/executing-plans` a nie `/subagent-driven-development`?**
 Plan 00 ma tylko 4 taski i są sekwencyjne (Prettier → ESLint → Husky → CI). Żaden task nie zależy od równoległości ani nie jest na tyle długi żeby "zmęczyć" kontekst. `/subagent-driven-development` ma sens od planu 02+ gdzie taski są bardziej złożone.
 
