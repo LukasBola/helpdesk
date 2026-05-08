@@ -1,0 +1,5 @@
+#!/bin/sh
+npx lint-staged
+if [ -d "server" ] && [ -d "client" ]; then
+  pnpm typecheck
+fi
