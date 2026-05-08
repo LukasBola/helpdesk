@@ -28,6 +28,7 @@ server/src/
 ### Task 1: Ticket service
 
 **Files:**
+
 - Create: `server/src/services/ticketService.ts`
 
 - [ ] **Step 1: Write failing unit tests**
@@ -37,11 +38,7 @@ Create `server/src/services/ticketService.test.ts`:
 ```typescript
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { prisma } from '../db'
-import {
-  listTickets,
-  findTicketById,
-  updateTicket,
-} from './ticketService'
+import { listTickets, findTicketById, updateTicket } from './ticketService'
 
 let ticketId: string
 
@@ -242,6 +239,7 @@ git commit -m "feat: ticket service — list, find, update with history tracking
 ### Task 2: Ticket routes
 
 **Files:**
+
 - Create: `server/src/routes/tickets.ts`
 
 - [ ] **Step 1: Write failing integration tests**
@@ -305,9 +303,7 @@ describe('GET /api/tickets', () => {
   })
 
   it('filters by status=OPEN', async () => {
-    const res = await request(app)
-      .get('/api/tickets?status=OPEN')
-      .set('Cookie', cookie)
+    const res = await request(app).get('/api/tickets?status=OPEN').set('Cookie', cookie)
     expect(res.status).toBe(200)
     expect(res.body.tickets.every((t: any) => t.status === 'OPEN')).toBe(true)
   })

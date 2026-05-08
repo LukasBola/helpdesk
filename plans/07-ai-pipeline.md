@@ -46,6 +46,7 @@ The key is already optional in the schema. For AI routes to work in production i
 ### Task 2: AI service
 
 **Files:**
+
 - Create: `server/src/services/aiService.ts`
 
 - [ ] **Step 1: Write failing unit tests with fixtures**
@@ -222,7 +223,10 @@ export async function classifyTicket(ticket: TicketInput, ticketId?: string) {
           type: 'object' as const,
           properties: {
             priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] },
-            category: { type: 'string', description: 'Short category slug, e.g. access_issue, billing, bug_report' },
+            category: {
+              type: 'string',
+              description: 'Short category slug, e.g. access_issue, billing, bug_report',
+            },
             confidence: { type: 'number', minimum: 0, maximum: 1 },
           },
           required: ['priority', 'category', 'confidence'],
@@ -272,7 +276,10 @@ export async function summarizeTicket(ticket: TicketInput, ticketId?: string) {
         input_schema: {
           type: 'object' as const,
           properties: {
-            summary: { type: 'string', description: '1-3 sentence summary of the ticket, no invented details' },
+            summary: {
+              type: 'string',
+              description: '1-3 sentence summary of the ticket, no invented details',
+            },
           },
           required: ['summary'],
         },
@@ -309,11 +316,7 @@ const suggestedReplySchema = z.object({
   reply: z.string().min(1),
 })
 
-export async function suggestReply(
-  ticket: TicketInput,
-  context: string = '',
-  ticketId?: string
-) {
+export async function suggestReply(ticket: TicketInput, context: string = '', ticketId?: string) {
   const start = Date.now()
   const response = await client.messages.create({
     model: MODEL,
@@ -327,7 +330,8 @@ export async function suggestReply(
           properties: {
             reply: {
               type: 'string',
-              description: 'Friendly, professional reply to the customer. Do not invent information not in the ticket or context.',
+              description:
+                'Friendly, professional reply to the customer. Do not invent information not in the ticket or context.',
             },
           },
           required: ['reply'],
@@ -411,6 +415,7 @@ git commit -m "feat: AI service — classification, summary, suggested reply wit
 ### Task 3: Rate limiter
 
 **Files:**
+
 - Create: `server/src/middleware/rateLimiter.ts`
 
 - [ ] **Step 1: Create `server/src/middleware/rateLimiter.ts`**
@@ -432,6 +437,7 @@ export const aiRateLimiter = rateLimit({
 ### Task 4: AI routes
 
 **Files:**
+
 - Create: `server/src/routes/ai.ts`
 
 - [ ] **Step 1: Write failing tests**
@@ -446,7 +452,9 @@ import { prisma } from '../db'
 import bcrypt from 'bcrypt'
 
 vi.mock('../services/aiService', () => ({
-  classifyTicket: vi.fn().mockResolvedValue({ priority: 'HIGH', category: 'access_issue', confidence: 0.9 }),
+  classifyTicket: vi
+    .fn()
+    .mockResolvedValue({ priority: 'HIGH', category: 'access_issue', confidence: 0.9 }),
   summarizeTicket: vi.fn().mockResolvedValue('Student cannot access purchased course.'),
   suggestReply: vi.fn().mockResolvedValue('Hi, we will look into this right away.'),
 }))
@@ -488,9 +496,7 @@ afterAll(async () => {
 
 describe('POST /api/tickets/:id/classify', () => {
   it('returns classification', async () => {
-    const res = await request(app)
-      .post(`/api/tickets/${ticketId}/classify`)
-      .set('Cookie', cookie)
+    const res = await request(app).post(`/api/tickets/${ticketId}/classify`).set('Cookie', cookie)
     expect(res.status).toBe(200)
     expect(res.body.priority).toBe('HIGH')
   })
@@ -498,9 +504,7 @@ describe('POST /api/tickets/:id/classify', () => {
 
 describe('POST /api/tickets/:id/summarize', () => {
   it('returns summary and persists it on the ticket', async () => {
-    const res = await request(app)
-      .post(`/api/tickets/${ticketId}/summarize`)
-      .set('Cookie', cookie)
+    const res = await request(app).post(`/api/tickets/${ticketId}/summarize`).set('Cookie', cookie)
     expect(res.status).toBe(200)
     expect(res.body.summary).toBeTruthy()
 
@@ -540,7 +544,10 @@ router.use(requireAuth, aiRateLimiter)
 
 router.post('/classify', async (req, res) => {
   const ticket = await prisma.ticket.findUnique({ where: { id: req.params.ticketId } })
-  if (!ticket) { res.status(404).json({ error: 'Not found' }); return }
+  if (!ticket) {
+    res.status(404).json({ error: 'Not found' })
+    return
+  }
 
   const result = await classifyTicket(ticket, ticket.id)
   await prisma.ticket.update({
@@ -552,7 +559,10 @@ router.post('/classify', async (req, res) => {
 
 router.post('/summarize', async (req, res) => {
   const ticket = await prisma.ticket.findUnique({ where: { id: req.params.ticketId } })
-  if (!ticket) { res.status(404).json({ error: 'Not found' }); return }
+  if (!ticket) {
+    res.status(404).json({ error: 'Not found' })
+    return
+  }
 
   const summary = await summarizeTicket(ticket, ticket.id)
   await prisma.ticket.update({ where: { id: ticket.id }, data: { summary } })
@@ -561,7 +571,10 @@ router.post('/summarize', async (req, res) => {
 
 router.post('/suggest-reply', async (req, res) => {
   const ticket = await prisma.ticket.findUnique({ where: { id: req.params.ticketId } })
-  if (!ticket) { res.status(404).json({ error: 'Not found' }); return }
+  if (!ticket) {
+    res.status(404).json({ error: 'Not found' })
+    return
+  }
 
   const reply = await suggestReply(ticket, '', ticket.id)
   res.json({ reply })
@@ -595,6 +608,7 @@ git commit -m "feat: AI endpoints — classify, summarize, suggest-reply with ra
 ### Task 5: Guardrail tests
 
 **Files:**
+
 - Create: `server/src/services/aiService.guardrails.test.ts`
 
 - [ ] **Step 1: Create guardrail tests**

@@ -31,6 +31,7 @@ server/src/
 ### Task 1: Session middleware
 
 **Files:**
+
 - Create: `server/src/lib/session.ts`
 
 - [ ] **Step 1: Install deps**
@@ -84,6 +85,7 @@ export const sessionMiddleware = session({
 ### Task 2: Auth middleware
 
 **Files:**
+
 - Create: `server/src/middleware/auth.ts`
 
 - [ ] **Step 1: Write failing tests**
@@ -192,6 +194,7 @@ git commit -m "feat: requireAuth and requireRole middleware"
 ### Task 3: Auth routes
 
 **Files:**
+
 - Create: `server/src/routes/auth.ts`
 
 - [ ] **Step 1: Write failing integration tests**
@@ -386,6 +389,7 @@ git commit -m "feat: session-based auth — login, logout, me endpoints"
 ### Task 4: Seed admin user
 
 **Files:**
+
 - Create: `server/prisma/seed.ts`
 
 - [ ] **Step 1: Create `server/prisma/seed.ts`**
@@ -441,6 +445,7 @@ git commit -m "feat: admin seed script"
 ### Task 5: Global error handler
 
 **Files:**
+
 - Create: `server/src/middleware/errorHandler.ts`
 
 - [ ] **Step 1: Create `server/src/middleware/errorHandler.ts`**

@@ -31,11 +31,13 @@ e2e/
 ### Task 1: Playwright setup
 
 **Files:**
+
 - Create: `e2e/playwright.config.ts`
 
 - [ ] **Step 1: Install Playwright**
 
 Run from repo root:
+
 ```bash
 pnpm add -D -w @playwright/test
 npx playwright install chromium
@@ -95,6 +97,7 @@ git commit -m "feat: playwright e2e setup"
 ### Task 2: Seed helper
 
 **Files:**
+
 - Create: `e2e/helpers/seed.ts`
 
 - [ ] **Step 1: Create `e2e/helpers/seed.ts`**
@@ -117,21 +120,26 @@ export async function seedTestData(): Promise<SeededData> {
   const adminLogin = await ctx.post(`${BASE}/auth/login`, {
     data: { email: 'admin@helpdesk.local', password: 'changeme123' },
   })
-  const adminCookie = (await adminLogin.headersArray())
-    .find(h => h.name.toLowerCase() === 'set-cookie')?.value ?? ''
+  const adminCookie =
+    (await adminLogin.headersArray()).find(h => h.name.toLowerCase() === 'set-cookie')?.value ?? ''
 
   // Create an agent user
   await ctx.post(`${BASE}/users`, {
     headers: { Cookie: adminCookie },
-    data: { email: 'e2e-agent@test.com', name: 'E2E Agent', password: 'testpass123', role: 'AGENT' },
+    data: {
+      email: 'e2e-agent@test.com',
+      name: 'E2E Agent',
+      password: 'testpass123',
+      role: 'AGENT',
+    },
   })
 
   // Login as agent
   const agentLogin = await ctx.post(`${BASE}/auth/login`, {
     data: { email: 'e2e-agent@test.com', password: 'testpass123' },
   })
-  const agentCookie = (await agentLogin.headersArray())
-    .find(h => h.name.toLowerCase() === 'set-cookie')?.value ?? ''
+  const agentCookie =
+    (await agentLogin.headersArray()).find(h => h.name.toLowerCase() === 'set-cookie')?.value ?? ''
 
   // Simulate inbound ticket via direct API (bypassing webhook in tests)
   const ticketRes = await ctx.post(`${BASE}/tickets/_seed`, {
@@ -175,6 +183,7 @@ git commit -m "test: e2e seed helper + test-only ticket seed endpoint"
 ### Task 3: Auth E2E tests
 
 **Files:**
+
 - Create: `e2e/tests/auth.spec.ts`
 
 - [ ] **Step 1: Create `e2e/tests/auth.spec.ts`**
@@ -234,6 +243,7 @@ git commit -m "test: e2e auth tests — login, logout, redirect"
 ### Task 4: Ticket list & detail E2E tests
 
 **Files:**
+
 - Create: `e2e/tests/tickets.spec.ts`
 
 - [ ] **Step 1: Create `e2e/tests/tickets.spec.ts`**
@@ -321,6 +331,7 @@ git commit -m "test: e2e ticket list and detail tests"
 ### Task 5: Reply flow E2E tests
 
 **Files:**
+
 - Create: `e2e/tests/reply.spec.ts`
 
 - [ ] **Step 1: Create `e2e/tests/reply.spec.ts`**
@@ -393,6 +404,7 @@ git commit -m "test: e2e reply flow — send reply, status transition, thread"
 ### Task 6: Role restriction E2E tests
 
 **Files:**
+
 - Create: `e2e/tests/roles.spec.ts`
 
 - [ ] **Step 1: Create `e2e/tests/roles.spec.ts`**
@@ -462,6 +474,7 @@ git commit -m "test: e2e role restriction tests — agent vs admin access"
 ### Task 7: CI integration
 
 **Files:**
+
 - Create: `.github/workflows/e2e.yml`
 
 - [ ] **Step 1: Create `.github/workflows/e2e.yml`**

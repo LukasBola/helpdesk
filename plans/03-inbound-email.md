@@ -29,6 +29,7 @@ server/src/
 ### Task 1: pg-boss queue setup
 
 **Files:**
+
 - Create: `server/src/jobs/queue.ts`
 
 - [ ] **Step 1: Install pg-boss**
@@ -87,6 +88,7 @@ main().catch(console.error)
 ### Task 2: Email processing job
 
 **Files:**
+
 - Create: `server/src/jobs/processEmail.ts`
 
 - [ ] **Step 1: Write failing unit tests**
@@ -181,12 +183,15 @@ type ParsedEmail = {
 }
 
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export function parsePostmarkPayload(
   payload: PostmarkPayload,
-  options: { ownDomain?: string } = {}
+  options: { ownDomain?: string } = {},
 ): ParsedEmail | null {
   const senderDomain = payload.FromFull.Email.split('@')[1]
 
@@ -244,6 +249,7 @@ OWN_DOMAIN: z.string().optional(),
 ```
 
 Add to `.env.example`:
+
 ```bash
 OWN_DOMAIN="helpdesk.com"
 ```
@@ -265,6 +271,7 @@ git commit -m "feat: pg-boss email processing job with anti-loop detection"
 ### Task 3: Postmark webhook endpoint
 
 **Files:**
+
 - Create: `server/src/routes/webhooks.ts`
 
 - [ ] **Step 1: Write failing integration tests**
@@ -327,7 +334,10 @@ import { EMAIL_JOB } from '../jobs/processEmail'
 
 const router = Router()
 
-function verifyPostmarkToken(req: import('express').Request, res: import('express').Response): boolean {
+function verifyPostmarkToken(
+  req: import('express').Request,
+  res: import('express').Response,
+): boolean {
   const token = req.headers['x-postmark-token']
   if (!env.POSTMARK_WEBHOOK_TOKEN || token !== env.POSTMARK_WEBHOOK_TOKEN) {
     res.status(401).json({ error: 'Unauthorized' })
@@ -373,6 +383,7 @@ git commit -m "feat: postmark webhook endpoint — enqueues email processing job
 ### Task 4: pg-boss queue integration tests
 
 **Files:**
+
 - Modify: `server/src/jobs/processEmail.test.ts`
 
 - [ ] **Step 1: Add integration test that hits real DB**
@@ -438,6 +449,7 @@ git commit -m "test: pg-boss integration tests — deduplication verified agains
 ### Task 5: Inbound email fixtures
 
 **Files:**
+
 - Create: `server/src/__fixtures__/postmark/`
 
 - [ ] **Step 1: Create fixture directory and sample payloads**
@@ -523,6 +535,7 @@ git commit -m "test: inbound email fixtures for edge cases"
 ### Task 6: Expanded inbound email fixtures (~20)
 
 **Files:**
+
 - Create: `server/src/__fixtures__/postmark/forwarded.json`
 - Create: `server/src/__fixtures__/postmark/quoted-reply.json`
 - Create: `server/src/__fixtures__/postmark/non-utf8.json`
@@ -807,6 +820,7 @@ git commit -m "test: expanded inbound email fixtures — 20 edge cases covered"
 ### Task 7: pg-boss queue behavior tests
 
 **Files:**
+
 - Create: `server/src/jobs/queue.test.ts`
 
 - [ ] **Step 1: Write failing tests**

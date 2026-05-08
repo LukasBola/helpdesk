@@ -21,6 +21,7 @@ Tworzy odizolowaną kopię repo w osobnym katalogu. Wszystkie zmiany lądują ta
 
 **Czy trzeba najpierw utworzyć branch?**
 Nie. `/using-git-worktrees feature/code-quality` tworzy branch i worktree jednocześnie — nie trzeba robić `git checkout -b` wcześniej. Pod spodem wykonuje:
+
 ```bash
 git worktree add -b feature/code-quality ../helpdesk-code-quality
 ```
@@ -30,6 +31,7 @@ Plan 00 ma tylko 4 taski i są sekwencyjne (Prettier → ESLint → Husky → CI
 
 **Co robi ten plan?**
 Konfiguruje całe środowisko jakości kodu zanim napisze się choćby linijkę logiki:
+
 - **Prettier** — formatowanie kodu (średniki, cudzysłowy, długość linii)
 - **ESLint strict** — statyczna analiza TypeScript, wykrywanie błędów przed uruchomieniem
 - **Husky + lint-staged** — pre-commit hook blokuje commit jeśli jest błąd formatowania lub lint

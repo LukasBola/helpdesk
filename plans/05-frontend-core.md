@@ -37,6 +37,7 @@ client/src/
 ### Task 1: API client + Query client
 
 **Files:**
+
 - Create: `client/src/lib/api.ts`
 - Create: `client/src/lib/queryClient.ts`
 
@@ -57,7 +58,7 @@ api.interceptors.response.use(
       window.location.href = '/login'
     }
     return Promise.reject(err)
-  }
+  },
 )
 ```
 
@@ -81,6 +82,7 @@ export const queryClient = new QueryClient({
 ### Task 2: Auth context
 
 **Files:**
+
 - Create: `client/src/contexts/AuthContext.tsx`
 
 - [ ] **Step 1: Write failing component tests**
@@ -209,6 +211,7 @@ git commit -m "feat: axios api client, query client, auth context"
 ### Task 3: Protected route
 
 **Files:**
+
 - Create: `client/src/components/ProtectedRoute.tsx`
 
 - [ ] **Step 1: Write failing tests**
@@ -299,6 +302,7 @@ git commit -m "feat: ProtectedRoute — redirects to /login when unauthenticated
 ### Task 4: Login page
 
 **Files:**
+
 - Create: `client/src/pages/LoginPage.tsx`
 
 - [ ] **Step 1: Write failing tests**
@@ -456,6 +460,7 @@ git commit -m "feat: login page with form validation and error handling"
 ### Task 5: App shell + routing
 
 **Files:**
+
 - Create: `client/src/components/AppShell.tsx`
 - Modify: `client/src/App.tsx`
 - Modify: `client/src/main.tsx`

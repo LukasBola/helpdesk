@@ -27,6 +27,7 @@ server/src/
 ### Task 1: Embedding service
 
 **Files:**
+
 - Create: `server/src/services/embeddingService.ts`
 
 - [ ] **Step 1: Install OpenAI SDK for embeddings**
@@ -174,6 +175,7 @@ git commit -m "feat: embedding service — chunk, embed, index, retrieve context
 ### Task 2: Wire context into suggestReply
 
 **Files:**
+
 - Modify: `server/src/routes/ai.ts`
 
 - [ ] **Step 1: Update suggest-reply route to fetch context first**
@@ -186,7 +188,10 @@ import { retrieveContext } from '../services/embeddingService'
 // replace the suggest-reply route:
 router.post('/suggest-reply', async (req, res) => {
   const ticket = await prisma.ticket.findUnique({ where: { id: req.params.ticketId } })
-  if (!ticket) { res.status(404).json({ error: 'Not found' }); return }
+  if (!ticket) {
+    res.status(404).json({ error: 'Not found' })
+    return
+  }
 
   const context = await retrieveContext(`${ticket.subject} ${ticket.body}`).catch(() => '')
   const reply = await suggestReply(ticket, context, ticket.id)
@@ -206,6 +211,7 @@ git commit -m "feat: inject RAG context into suggested reply prompt"
 ### Task 3: Documents API
 
 **Files:**
+
 - Create: `server/src/routes/documents.ts`
 
 - [ ] **Step 1: Write failing tests**
@@ -251,7 +257,10 @@ describe('POST /api/documents', () => {
     const res = await request(app)
       .post('/api/documents')
       .set('Cookie', adminCookie)
-      .send({ title: 'Course access FAQ', content: 'To access your course, log in and go to My Courses.' })
+      .send({
+        title: 'Course access FAQ',
+        content: 'To access your course, log in and go to My Courses.',
+      })
     expect(res.status).toBe(202)
     expect(res.body).toEqual({ ok: true })
   })
@@ -308,7 +317,7 @@ router.post('/', async (req, res) => {
 
   // Index asynchronously after responding
   indexDocument(result.data.title, result.data.content).catch(err =>
-    console.error('[documents] indexing failed:', err)
+    console.error('[documents] indexing failed:', err),
   )
 })
 
