@@ -254,13 +254,10 @@ afterAll(async () => {
 
 describe('POST /api/documents', () => {
   it('accepts document and triggers indexing', async () => {
-    const res = await request(app)
-      .post('/api/documents')
-      .set('Cookie', adminCookie)
-      .send({
-        title: 'Course access FAQ',
-        content: 'To access your course, log in and go to My Courses.',
-      })
+    const res = await request(app).post('/api/documents').set('Cookie', adminCookie).send({
+      title: 'Course access FAQ',
+      content: 'To access your course, log in and go to My Courses.',
+    })
     expect(res.status).toBe(202)
     expect(res.body).toEqual({ ok: true })
   })

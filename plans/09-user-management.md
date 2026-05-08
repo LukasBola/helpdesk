@@ -100,15 +100,12 @@ describe('GET /api/users', () => {
 
 describe('POST /api/users', () => {
   it('creates a new agent', async () => {
-    const res = await request(app)
-      .post('/api/users')
-      .set('Cookie', adminCookie)
-      .send({
-        email: 'new-agent@test.com',
-        name: 'New Agent',
-        password: 'securePass1',
-        role: 'AGENT',
-      })
+    const res = await request(app).post('/api/users').set('Cookie', adminCookie).send({
+      email: 'new-agent@test.com',
+      name: 'New Agent',
+      password: 'securePass1',
+      role: 'AGENT',
+    })
     expect(res.status).toBe(201)
     expect(res.body.email).toBe('new-agent@test.com')
     expect(res.body.passwordHash).toBeUndefined()
