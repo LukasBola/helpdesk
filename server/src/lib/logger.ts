@@ -1,11 +1,8 @@
 import pino from 'pino'
 
-import { env } from '../env'
+const isProduction = process.env.NODE_ENV === 'production'
 
 export const logger = pino({
-  level: env.NODE_ENV === 'production' ? 'info' : 'debug',
-  transport:
-    env.NODE_ENV !== 'production'
-      ? { target: 'pino-pretty', options: { colorize: true } }
-      : undefined,
+  level: isProduction ? 'info' : 'debug',
+  transport: !isProduction ? { target: 'pino-pretty', options: { colorize: true } } : undefined,
 })

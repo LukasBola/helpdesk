@@ -1,12 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 describe('env', () => {
+  const originalPort = process.env.PORT
+
   beforeEach(() => {
     vi.resetModules()
   })
 
   afterEach(() => {
     vi.unstubAllEnvs()
+    // Restore PORT after direct deletion — vi.unstubAllEnvs() only restores stubbed keys
+    if (originalPort !== undefined) process.env.PORT = originalPort
+    else delete process.env.PORT
   })
 
   it('throws when DATABASE_URL is missing', async () => {
