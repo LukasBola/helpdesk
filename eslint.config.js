@@ -20,7 +20,9 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        projectService: {
+          allowDefaultProject: ['server/vitest.config.ts'],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -57,7 +59,7 @@ export default tseslint.config(
       globals: globals.browser,
     },
     settings: {
-      react: { version: 'detect' },
+      react: { version: '18.3' },
     },
     rules: {
       ...reactPlugin.configs.recommended.rules,

@@ -6,12 +6,17 @@
   "packageManager": "pnpm@11.0.8",
   "scripts": {
     "test": "echo \"No tests yet\"",
+    "dev": "concurrently \"pnpm --filter server dev\" \"pnpm --filter client dev\"",
+    "build": "pnpm --filter server build && pnpm --filter client build",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
-    "typecheck": "pnpm --filter server tsc --noEmit && pnpm --filter client tsc --noEmit",
+    "typecheck": "pnpm --filter server typecheck && pnpm --filter client typecheck",
     "prepare": "husky"
   },
   "license": "ISC",
+  "engines": {
+    "node": ">=22 <24"
+  },
   "lint-staged": {
     "*.{ts,tsx}": [
       "prettier --write",
@@ -23,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "concurrently": "^8.2.2",
     "eslint": "^10.3.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
