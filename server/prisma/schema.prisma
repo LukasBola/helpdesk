@@ -1,0 +1,142 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+enum Role {
+  AGENT
+  ADMIN
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AIInteractionType {
+  CLASSIFICATION
+  SUMMARY
+  SUGGESTED_REPLY
+  EMBEDDING
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         Role      @default(AGENT)
+  isBlocked    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assignedTickets Ticket[]        @relation("AssignedTickets")
+  history         TicketHistory[]
+  replies         Reply[]
+
+  @@map("users")
+}
+
+model Ticket {
+  id            String         @id @default(cuid())
+  subject       String
+  body          String
+  summary       String?
+  category      String?
+  status        TicketStatus   @default(OPEN)
+  priority      TicketPriority @default(MEDIUM)
+  customerEmail String
+  customerName  String?
+  messageId     String         @unique
+  assigneeId    String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  assignee       User?           @relation("AssignedTickets", fields: [assigneeId], references: [id])
+  history        TicketHistory[]
+  replies        Reply[]
+  aiInteractions AIInteraction[]
+
+  @@map("tickets")
+}
+
+model TicketHistory {
+  id        String   @id @default(cuid())
+  ticketId  String
+  userId    String?
+  field     String
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@map("ticket_history")
+}
+
+model Reply {
+  id       String   @id @default(cuid())
+  ticketId String
+  userId   String
+  body     String
+  sentAt   DateTime @default(now())
+  resendId String?
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("replies")
+}
+
+model AIInteraction {
+  id           String            @id @default(cuid())
+  ticketId     String?
+  type         AIInteractionType
+  prompt       String
+  response     String
+  inputTokens  Int               @default(0)
+  outputTokens Int               @default(0)
+  costUsd      Float             @default(0)
+  latencyMs    Int               @default(0)
+  createdAt    DateTime          @default(now())
+
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
+
+  @@map("ai_interactions")
+}
+
+model Document {
+  id        String                       @id @default(cuid())
+  title     String
+  content   String
+  embedding Unsupported("vector(1536)")?
+  createdAt DateTime                     @default(now())
+  updatedAt DateTime                     @updatedAt
+
+  @@map("documents")
+}
+
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire])
+  @@map("session")
+}
