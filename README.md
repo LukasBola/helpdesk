@@ -27,7 +27,7 @@ A full-stack support ticket management system that uses AI to automatically clas
 
 ## Project Structure
 
-```
+```text
 helpdesk/
 ├── client/          # React SPA (Vite)
 ├── server/          # Express REST API
@@ -73,10 +73,10 @@ pnpm --filter server exec prisma migrate dev
 pnpm dev
 ```
 
-| Service     | URL                   |
-| ----------- | --------------------- |
-| Frontend    | http://localhost:5173 |
-| Backend API | http://localhost:3000 |
+| Service     | URL                     |
+| ----------- | ----------------------- |
+| Frontend    | <http://localhost:5173> |
+| Backend API | <http://localhost:3000> |
 
 > If port 5173 is taken, Vite picks the next available one (5174, 5175…).
 
