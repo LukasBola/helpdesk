@@ -14,6 +14,9 @@
     "prepare": "husky"
   },
   "license": "ISC",
+  "engines": {
+    "node": ">=22 <24"
+  },
   "lint-staged": {
     "*.{ts,tsx}": [
       "prettier --write",
