@@ -57,7 +57,7 @@ export default tseslint.config(
       globals: globals.browser,
     },
     settings: {
-      react: { version: 'detect' },
+      react: { version: '18.3' },
     },
     rules: {
       ...reactPlugin.configs.recommended.rules,
