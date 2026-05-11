@@ -53,4 +53,4 @@ jobs:
       - name: Run server tests
         run: pnpm --filter server test
       - name: Run client tests
-        run: pnpm --filter client test -- --passWithNoTests
+        run: pnpm --filter client test
