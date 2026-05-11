@@ -73,6 +73,8 @@ model Ticket {
   aiInteractions AIInteraction[]
 
   @@map("tickets")
+  @@index([customerEmail])
+  @@index([status, assigneeId])
 }
 
 model TicketHistory {
@@ -88,6 +90,7 @@ model TicketHistory {
   user   User?  @relation(fields: [userId], references: [id])
 
   @@map("ticket_history")
+  @@index([ticketId])
 }
 
 model Reply {
@@ -102,6 +105,7 @@ model Reply {
   user   User   @relation(fields: [userId], references: [id])
 
   @@map("replies")
+  @@index([ticketId])
 }
 
 model AIInteraction {
@@ -119,6 +123,7 @@ model AIInteraction {
   ticket Ticket? @relation(fields: [ticketId], references: [id])
 
   @@map("ai_interactions")
+  @@index([ticketId])
 }
 
 model Document {
