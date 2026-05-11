@@ -17,11 +17,13 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.0",
+    "@types/supertest": "^7.2.0",
+    "@vitest/coverage-v8": "^2.1.8",
     "prisma": "^5.22.0",
+    "supertest": "^7.2.2",
+    "testcontainers": "^10.14.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
-    "@vitest/coverage-v8": "^2.1.8",
-    "testcontainers": "^10.14.0"
+    "vitest": "^2.1.8"
   }
 }
