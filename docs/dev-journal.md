@@ -4,6 +4,64 @@ Historia komend i decyzji podczas pracy nad projektem.
 
 ---
 
+## 2026-05-11
+
+### Plan 01: Setup & Database (monorepo, TypeScript, Prisma, Docker, ENV)
+
+```text
+/using-git-worktrees feature/setup-database
+
+Kiedy worktree będzie gotowy:
+
+/subagent-driven-development plans/01-setup-database.md
+```
+
+**Dlaczego `/subagent-driven-development`?**
+11 taskow, kazdy ciezki (Prisma schema, testcontainers, shadcn/ui). Jeden wspolny kontekst "meczy sie" po 6-7 taskach i zaczyna robic bledy lub pomijac szczegoly. Kazdy subagent startuje swiezym kontekstem i dostaje tylko swoj task — jakos wykonania jest wyzsza niz przy `/executing-plans`.
+
+**Prerequisite — Docker musi działac przed odpaleniem planu:**
+
+```bash
+docker info
+```
+
+Task 4 odpala `docker compose up -d postgres` — bez tego plan zatrzyma sie w polowie.
+
+**Co robi ten plan** (11 taskow, szkielet aplikacji przed logika biznesowa):
+
+- **Monorepo root** — pnpm workspaces z pakietami `client` i `server`
+- **Server package** — TypeScript + Express + Prisma, tsconfig, skrypty dev/build/test
+- **Client package** — Vite + React + TanStack Query + Tailwind, scaffold przez `create vite`
+- **Docker Compose** — PostgreSQL 16 z pgvector, wolumen na dane
+- **ENV validation** — Zod waliduje zmienne przy starcie, serwer nie startuje bez wymaganych kluczy (TDD)
+- **Prisma schema** — wszystkie modele domeny naraz: User, Ticket, TicketHistory, Reply, AIInteraction, Session, migracja `init`
+- **Prisma client singleton** — jeden klient na caly proces, bezpieczny przy hot-reload
+- **Express bootstrap** — app factory + `/health` endpoint (TDD)
+- **testcontainers** — osobny kontener Postgres na testy integracyjne, uruchamiany przez Vitest globalSetup
+- **Tailwind + shadcn/ui** — komponenty: button, input, label, card, badge, table, select
+- **Pino logging** — JSON w produkcji, pretty w dev
+
+**Prisma schema upfront** — kolejne plany (auth, tickets, AI, email) tylko dodaja endpointy, nie modyfikuja schematu. Stabilny kontrakt od poczatku.
+
+**testcontainers zamiast mockow** — nauczka z code review planu 00: mockowany DB maskuje bledy migracji. Prawdziwy Postgres w kontenerze weryfikuje rzeczywiste zachowanie.
+
+---
+
+```text
+/requesting-code-review
+Sprawdz zmiany wprowadzone podczas implementacji plans/01-setup-database.md
+
+Kiedy review bedzie gotowe i poprawki wdrozone:
+
+/verification-before-completion
+
+Kiedy weryfikacja przejdzie:
+
+/finishing-a-development-branch
+```
+
+---
+
 ## 2026-05-08
 
 ### Plan 00: Code Quality (Prettier, ESLint, Husky, CI)
