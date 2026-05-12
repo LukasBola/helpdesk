@@ -4,10 +4,11 @@ import { z } from 'zod'
 
 import { prisma } from '../db'
 import { requireAuth } from '../middleware/auth'
+import { SESSION_COOKIE_NAME } from '../lib/session'
 
 const router = Router()
 
-const DUMMY_HASH = '$2b$10$invalidhashpadding..............................'
+const DUMMY_HASH = '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lh3u'
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -48,10 +49,11 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
   }
 })
 
-router.post('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie('connect.sid')
-    res.json({ ok: true })
+router.post('/logout', (req, res, next) => {
+  req.session.destroy((err) => {
+    if (err) { next(err); return }
+    res.clearCookie(SESSION_COOKIE_NAME)
+    res.json({ message: 'Logged out' })
   })
 })
 
@@ -62,7 +64,9 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
       select: { id: true, email: true, name: true, role: true, isBlocked: true },
     })
     if (!user || user.isBlocked) {
-      res.status(401).json({ error: 'Unauthorized' })
+      req.session.destroy(() => {
+        res.status(401).json({ error: 'Unauthorized' })
+      })
       return
     }
     res.json({ id: user.id, email: user.email, name: user.name, role: user.role })
