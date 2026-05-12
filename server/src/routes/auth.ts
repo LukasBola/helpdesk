@@ -1,10 +1,11 @@
 import bcrypt from 'bcrypt'
-import { NextFunction, Request, Response, Router } from 'express'
+import type { NextFunction, Request, Response } from 'express'
+import { Router } from 'express'
 import { z } from 'zod'
 
 import { prisma } from '../db'
-import { requireAuth } from '../middleware/auth'
 import { SESSION_COOKIE_NAME } from '../lib/session'
+import { requireAuth } from '../middleware/auth'
 
 const router = Router()
 
@@ -38,8 +39,11 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
       return
     }
 
-    req.session.regenerate((err) => {
-      if (err) { next(err); return }
+    req.session.regenerate(err => {
+      if (err) {
+        next(err)
+        return
+      }
       req.session.userId = user.id
       req.session.role = user.role
       res.json({ id: user.id, email: user.email, name: user.name, role: user.role })
@@ -50,8 +54,11 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
 })
 
 router.post('/logout', (req, res, next) => {
-  req.session.destroy((err) => {
-    if (err) { next(err); return }
+  req.session.destroy(err => {
+    if (err) {
+      next(err)
+      return
+    }
     res.clearCookie(SESSION_COOKIE_NAME)
     res.json({ message: 'Logged out' })
   })

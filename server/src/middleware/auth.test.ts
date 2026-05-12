@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { NextFunction, Request, Response } from 'express'
 import type { MockInstance } from 'vitest'
-import type { Request, Response, NextFunction } from 'express'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { requireAuth, requireRole } from './auth'
 
 function mockReq(session: Partial<{ userId: string; role: string }> = {}): Request {
