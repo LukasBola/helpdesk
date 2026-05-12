@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { MockInstance } from 'vitest'
-import { Request, Response, NextFunction } from 'express'
+import type { Request, Response, NextFunction } from 'express'
 import { requireAuth, requireRole } from './auth'
 
 function mockReq(session: Partial<{ userId: string; role: string }> = {}): Request {
@@ -8,10 +8,10 @@ function mockReq(session: Partial<{ userId: string; role: string }> = {}): Reque
 }
 
 function mockRes(): { status: MockInstance; json: MockInstance } & Response {
-  const res = {} as Response
+  const res: { status?: MockInstance; json?: MockInstance } = {}
   res.status = vi.fn().mockReturnValue(res)
   res.json = vi.fn().mockReturnValue(res)
-  return res as any
+  return res as { status: MockInstance; json: MockInstance } & Response
 }
 
 const next = vi.fn() as unknown as NextFunction
