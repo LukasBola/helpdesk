@@ -55,3 +55,6 @@ Thumbs.db
 
 # Railway
 .railway/
+
+# Git worktrees
+.worktrees/
