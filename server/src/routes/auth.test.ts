@@ -20,7 +20,9 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await prisma.user.deleteMany()
+  await prisma.user.deleteMany({
+    where: { email: { in: ['agent@test.com', 'blocked@test.com'] } },
+  })
 })
 
 describe('POST /api/auth/login', () => {
@@ -93,5 +95,23 @@ describe('GET /api/auth/me', () => {
   it('returns 401 when not authenticated', async () => {
     const res = await request(app).get('/api/auth/me')
     expect(res.status).toBe(401)
+  })
+
+  it('returns 401 and invalidates session for blocked user', async () => {
+    const agent = request.agent(app)
+    await agent.post('/api/auth/login').send({ email: 'agent@test.com', password: 'password123' })
+
+    // Block the user after login
+    await prisma.user.update({ where: { email: 'agent@test.com' }, data: { isBlocked: true } })
+
+    const res = await agent.get('/api/auth/me')
+    expect(res.status).toBe(401)
+
+    // Session should now be invalidated
+    const me2 = await agent.get('/api/auth/me')
+    expect(me2.status).toBe(401)
+
+    // Restore for other tests
+    await prisma.user.update({ where: { email: 'agent@test.com' }, data: { isBlocked: false } })
   })
 })
