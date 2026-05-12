@@ -33,6 +33,7 @@ describe('requireAuth', () => {
     const res = mockRes()
     requireAuth(req, res, next)
     expect(res.status).toHaveBeenCalledWith(401)
+    expect(next).not.toHaveBeenCalled()
   })
 })
 
@@ -49,5 +50,14 @@ describe('requireRole', () => {
     const res = mockRes()
     requireRole('ADMIN')(req, res, next)
     expect(res.status).toHaveBeenCalledWith(403)
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it('returns 401 when no userId in session', () => {
+    const req = mockReq()
+    const res = mockRes()
+    requireRole('ADMIN')(req, res, next)
+    expect(res.status).toHaveBeenCalledWith(401)
+    expect(next).not.toHaveBeenCalled()
   })
 })
