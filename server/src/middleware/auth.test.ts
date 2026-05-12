@@ -53,6 +53,14 @@ describe('requireRole', () => {
     expect(next).not.toHaveBeenCalled()
   })
 
+  it('allows ADMIN to pass AGENT role check', () => {
+    const req = mockReq({ userId: 'u1', role: 'ADMIN' })
+    const res = mockRes()
+    requireRole('AGENT')(req, res, next)
+    expect(next).toHaveBeenCalled()
+    expect(next).not.toHaveBeenCalledWith(expect.any(Error))
+  })
+
   it('returns 401 when no userId in session', () => {
     const req = mockReq()
     const res = mockRes()
