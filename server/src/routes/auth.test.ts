@@ -51,6 +51,23 @@ describe('POST /api/auth/login', () => {
     const res = await request(app).post('/api/auth/login').send({ email: 'agent@test.com' })
     expect(res.status).toBe(422)
   })
+
+  it('returns 401 for blocked user', async () => {
+    // Create a blocked user
+    await prisma.user.create({
+      data: {
+        email: 'blocked@test.com',
+        name: 'Blocked User',
+        passwordHash: await bcrypt.hash('password123', 10),
+        role: 'AGENT',
+        isBlocked: true,
+      },
+    })
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'blocked@test.com', password: 'password123' })
+    expect(res.status).toBe(401)
+  })
 })
 
 describe('POST /api/auth/logout', () => {
