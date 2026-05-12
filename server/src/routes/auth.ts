@@ -65,8 +65,7 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
       res.status(401).json({ error: 'Unauthorized' })
       return
     }
-    const { isBlocked: _, ...userData } = user
-    res.json(userData)
+    res.json({ id: user.id, email: user.email, name: user.name, role: user.role })
   } catch (err) {
     next(err)
   }
