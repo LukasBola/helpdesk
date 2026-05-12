@@ -4,6 +4,53 @@ Historia komend i decyzji podczas pracy nad projektem.
 
 ---
 
+## 2026-05-12
+
+### Plan 02: Authentication (session, middleware, routes, seed, error handler)
+
+```text
+/using-git-worktrees feature/authentication
+
+Kiedy worktree będzie gotowy:
+
+/subagent-driven-development plans/02-authentication.md
+```
+
+**Co robi ten plan** (5 taskow, session-based auth przed logiką biletową):
+
+- **Session middleware** — express-session + connect-pg-simple, sesje w tabeli `session` w Postgresie (już w schemacie z planu 01)
+- **Auth middleware** — `requireAuth` i `requireRole('ADMIN')` jako Express middleware, TDD
+- **Auth routes** — `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, integracyjne testy z supertest + testcontainers
+- **Seed admin** — `prisma/seed.ts` tworzy pierwszego admina przez `prisma db seed`, hasło przez bcrypt
+- **Global error handler** — 4-parametrowe middleware, rejestrowane jako ostatnie w `app.ts`
+
+**Dlaczego sesje w bazie zamiast JWT?**
+Sesja w Postgresie można unieważnić natychmiast — `DELETE FROM session WHERE sess->>'userId' = ?`. JWT żyje do wygaśnięcia nawet po wylogowaniu. Dla helpdesk (blokowanie agentów, natychmiastowy logout) sesja daje pełną kontrolę.
+
+**Prereq — Plan 01 musi być zakończony:**
+Prisma schema z modelem `Session` musi być zmigrowna, Docker musi działać.
+
+```bash
+docker compose up -d
+```
+
+---
+
+```text
+/requesting-code-review
+Sprawdź zmiany wprowadzone podczas implementacji plans/02-authentication.md
+
+Kiedy review będzie gotowe i poprawki wdrożone:
+
+/verification-before-completion
+
+Kiedy weryfikacja przejdzie:
+
+/finishing-a-development-branch
+```
+
+---
+
 ## 2026-05-11
 
 ### Plan 01: Setup & Database (monorepo, TypeScript, Prisma, Docker, ENV)
