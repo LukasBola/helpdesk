@@ -37,10 +37,12 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
       return
     }
 
-    req.session.userId = user.id
-    req.session.role = user.role
-
-    res.json({ id: user.id, email: user.email, name: user.name, role: user.role })
+    req.session.regenerate((err) => {
+      if (err) { next(err); return }
+      req.session.userId = user.id
+      req.session.role = user.role
+      res.json({ id: user.id, email: user.email, name: user.name, role: user.role })
+    })
   } catch (err) {
     next(err)
   }
@@ -57,13 +59,14 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.session.userId },
-      select: { id: true, email: true, name: true, role: true },
+      select: { id: true, email: true, name: true, role: true, isBlocked: true },
     })
-    if (!user) {
+    if (!user || user.isBlocked) {
       res.status(401).json({ error: 'Unauthorized' })
       return
     }
-    res.json(user)
+    const { isBlocked: _, ...userData } = user
+    res.json(userData)
   } catch (err) {
     next(err)
   }
