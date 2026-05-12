@@ -1,6 +1,7 @@
+import bcrypt from 'bcrypt'
 import { Router } from 'express'
 import { z } from 'zod'
-import bcrypt from 'bcrypt'
+
 import { prisma } from '../db'
 import { requireAuth } from '../middleware/auth'
 

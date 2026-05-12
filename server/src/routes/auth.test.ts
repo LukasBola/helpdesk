@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import bcrypt from 'bcrypt'
 import request from 'supertest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+
 import { app } from '../app'
 import { prisma } from '../db'
-import bcrypt from 'bcrypt'
 
 let agentId: string
 
