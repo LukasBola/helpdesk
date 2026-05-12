@@ -21,7 +21,7 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['server/vitest.config.ts'],
+          allowDefaultProject: ['server/vitest.config.ts', 'server/prisma/seed.ts'],
         },
         tsconfigRootDir: import.meta.dirname,
       },

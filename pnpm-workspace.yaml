@@ -4,6 +4,7 @@ packages:
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
+  bcrypt: true
   cpu-features: true
   esbuild: true
   prisma: true
