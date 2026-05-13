@@ -16,13 +16,16 @@ function verifyPostmarkToken(req: Request, res: Response): boolean {
   return true
 }
 
-router.post('/postmark', async (req, res) => {
+router.post('/postmark', async (req, res, next) => {
   if (!verifyPostmarkToken(req, res)) return
 
-  const queue = await getQueue()
-  await queue.send(EMAIL_JOB, req.body)
-
-  res.json({ ok: true })
+  try {
+    const queue = await getQueue()
+    await queue.send(EMAIL_JOB, req.body)
+    res.json({ ok: true })
+  } catch (err) {
+    next(err)
+  }
 })
 
 export default router
