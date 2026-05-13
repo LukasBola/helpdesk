@@ -4,6 +4,58 @@ Historia komend i decyzji podczas pracy nad projektem.
 
 ---
 
+## 2026-05-13
+
+### Plan 03: Inbound Email → Ticket Creation (pg-boss, Postmark webhook)
+
+```text
+/using-git-worktrees feature/inbound-email
+
+Kiedy worktree będzie gotowy:
+
+/subagent-driven-development plans/03-inbound-email.md
+```
+
+**Co robi ten plan** (7 taskow, email staje się ticketem w bazie):
+
+- **pg-boss singleton** — `queue.ts` z lazy init, `getQueue()` + `stopQueue()`, schemat w osobnym `pgboss` namespace
+- **Job handler** — `processEmail.ts`: `parsePostmarkPayload()` + `registerEmailWorker()` zapisuje ticket do bazy przez Prisma
+- **Anti-loop** — emaile z własnej domeny (`OWN_DOMAIN` w env) są cicho ignorowane, nigdy nie tworzą ticketu
+- **Deduplication** — unikalny constraint na `tickets.messageId` (z planu 01); duplikaty łapane przez `P2002` i ignorowane
+- **Webhook endpoint** — `POST /api/webhooks/postmark` z weryfikacją tokenu (`X-Postmark-Token`), zwraca `200 OK` natychmiast po enqueue — nigdy nie blokuje na AI ani DB
+- **Fixtures** — 20+ plików JSON z edge case'ami (forward, quoted reply, HTML-only, unicode, puste body, plus-address)
+- **Integration tests** — testcontainers + prawdziwa baza weryfikuje deduplication, retry po błędzie, concurrency
+
+**Architektura asynchroniczna:**
+Webhook handler tylko enqueueuje job i odpowiada `200 OK`. pg-boss worker przetwarza go w tle — parsuje payload, tworzy ticket. Dzięki temu Postmark nie czeka na wolne operacje DB lub AI, a retry logic jest wbudowana w pg-boss.
+
+**Dlaczego pg-boss zamiast prostego `await prisma.ticket.create()` w webhookU?**
+Webhook musi odpowiedzieć szybko (Postmark timeout ~15s). Jeśli baza jest wolna lub AI klasyfikuje ticket synchronicznie — przekroczymy limit. Kolejka oddziela odbiór od przetwarzania i daje retry bez ryzyka utraty wiadomości.
+
+**Prereq — Plan 02 musi być zakończony:**
+Potrzebny `requireAuth` middleware (dostępny dla przyszłych admin routes), schemat Prisma z modelem `Ticket` (z planu 01), Docker z Postgresem.
+
+```bash
+docker compose up -d
+```
+
+---
+
+```text
+/requesting-code-review
+Sprawdź zmiany wprowadzone podczas implementacji plans/03-inbound-email.md
+
+Kiedy review będzie gotowe i poprawki wdrożone:
+
+/verification-before-completion
+
+Kiedy weryfikacja przejdzie:
+
+/finishing-a-development-branch
+```
+
+---
+
 ## 2026-05-12
 
 ### Plan 02: Authentication (session, middleware, routes, seed, error handler)
