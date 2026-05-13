@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 
+import { prisma } from '../db'
 import { parsePostmarkPayload } from './processEmail'
 
 describe('parsePostmarkPayload', () => {
@@ -49,5 +50,43 @@ describe('parsePostmarkPayload', () => {
     }
     const result = parsePostmarkPayload(payload, { ownDomain: 'helpdesk.com' })
     expect(result).toBeNull()
+  })
+})
+
+// Integration: real DB via testcontainers (started in global setup)
+describe('ticket creation (integration)', () => {
+  afterAll(async () => {
+    await prisma.ticket.deleteMany()
+  })
+
+  it('creates a ticket from a valid email payload', async () => {
+    const parsed = parsePostmarkPayload({
+      MessageID: 'integration-1@test.com',
+      From: 'c@test.com',
+      FromFull: { Email: 'c@test.com', Name: 'Test Customer' },
+      Subject: 'Integration test',
+      TextBody: 'This is a test',
+      HtmlBody: '',
+      To: 'support@test.com',
+    })
+    expect(parsed).not.toBeNull()
+    if (!parsed) return
+
+    const ticket = await prisma.ticket.create({ data: parsed })
+    expect(ticket.messageId).toBe('integration-1@test.com')
+    expect(ticket.status).toBe('OPEN')
+  })
+
+  it('does not create duplicate ticket for same messageId', async () => {
+    const data = {
+      messageId: 'dup-1@test.com',
+      customerEmail: 'c@test.com',
+      customerName: 'C',
+      subject: 'Dup test',
+      body: 'body',
+    }
+    await prisma.ticket.create({ data })
+
+    await expect(prisma.ticket.create({ data })).rejects.toThrow()
   })
 })
