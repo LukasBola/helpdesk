@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-plus@mail.postmarkapp.com",
+  "From": "student@example.com",
+  "FromFull": { "Email": "student@example.com", "Name": "Student" },
+  "Subject": "Re: following up",
+  "TextBody": "Any update on my issue?",
+  "HtmlBody": "",
+  "To": "support+ticket-xyz789@helpdesk.com"
+}

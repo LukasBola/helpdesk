@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-longsubject@mail.postmarkapp.com",
+  "From": "student@example.com",
+  "FromFull": { "Email": "student@example.com", "Name": "Student" },
+  "Subject": "This is a very long subject line that goes on and on and on and exceeds what most email clients would normally display without truncation and keeps going even further than that",
+  "TextBody": "My issue is in the subject.",
+  "HtmlBody": "",
+  "To": "support@helpdesk.com"
+}

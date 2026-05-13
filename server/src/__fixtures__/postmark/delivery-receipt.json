@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-delivery@mail.postmarkapp.com",
+  "From": "mailer-daemon@example.com",
+  "FromFull": { "Email": "mailer-daemon@example.com", "Name": "Mail Delivery Subsystem" },
+  "Subject": "Delivery Status Notification (Failure)",
+  "TextBody": "This is an automatically generated Delivery Status Notification. Delivery to the following recipient failed.",
+  "HtmlBody": "",
+  "To": "support@helpdesk.com"
+}

@@ -1,7 +1,16 @@
 import { afterAll, describe, expect, it } from 'vitest'
 
 import autoResponder from '../__fixtures__/postmark/auto-responder.json'
+import deliveryReceipt from '../__fixtures__/postmark/delivery-receipt.json'
+import emptyBody from '../__fixtures__/postmark/empty-body.json'
+import forwarded from '../__fixtures__/postmark/forwarded.json'
+import htmlOnly from '../__fixtures__/postmark/html-only.json'
+import noName from '../__fixtures__/postmark/no-name.json'
+import nonUtf8 from '../__fixtures__/postmark/non-utf8.json'
+import ourReplyLoop from '../__fixtures__/postmark/our-reply-loop.json'
 import plainText from '../__fixtures__/postmark/plain-text.json'
+import plusAddress from '../__fixtures__/postmark/plus-address.json'
+import unicodeSubject from '../__fixtures__/postmark/unicode-subject.json'
 import { prisma } from '../db'
 import type { PostmarkPayload } from './processEmail'
 import { parsePostmarkPayload } from './processEmail'
@@ -106,5 +115,60 @@ describe('fixture tests', () => {
       ownDomain: 'helpdesk.com',
     })
     expect(result).toBeNull()
+  })
+})
+
+describe('expanded fixture tests', () => {
+  it('parses forwarded email', () => {
+    const result = parsePostmarkPayload(forwarded as PostmarkPayload)
+    expect(result?.customerEmail).toBe('manager@example.com')
+    expect(result?.body).toContain('Please handle this')
+  })
+
+  it('falls back to stripped HTML when TextBody is empty', () => {
+    const result = parsePostmarkPayload(htmlOnly as PostmarkPayload)
+    expect(result?.body).toBe('I need urgent help with my account.')
+  })
+
+  it('returns empty string body for email with no text or HTML', () => {
+    const result = parsePostmarkPayload(emptyBody as PostmarkPayload)
+    expect(result?.body).toBe('')
+  })
+
+  it('falls back to email address as name when Name is empty', () => {
+    const result = parsePostmarkPayload(noName as PostmarkPayload)
+    expect(result?.customerName).toBe('anon@example.com')
+  })
+
+  it('handles unicode subject and name without throwing', () => {
+    const result = parsePostmarkPayload(unicodeSubject as PostmarkPayload)
+    expect(result).not.toBeNull()
+    expect(result?.subject).toContain('请帮帮我')
+  })
+
+  it('handles non-UTF8 accented characters without throwing', () => {
+    const result = parsePostmarkPayload(nonUtf8 as PostmarkPayload)
+    expect(result?.customerName).toContain('René')
+  })
+
+  it('rejects email sent from our own support address (loop)', () => {
+    const result = parsePostmarkPayload(ourReplyLoop as PostmarkPayload, {
+      ownDomain: 'helpdesk.com',
+    })
+    expect(result).toBeNull()
+  })
+
+  it('rejects delivery receipt from mailer-daemon (loop)', () => {
+    const result = parsePostmarkPayload(deliveryReceipt as PostmarkPayload, {
+      ownDomain: 'helpdesk.com',
+    })
+    // mailer-daemon is not our domain — not filtered, becomes low-priority ticket
+    expect(result).not.toBeNull()
+  })
+
+  it('parses plus-addressed reply correctly', () => {
+    const result = parsePostmarkPayload(plusAddress as PostmarkPayload)
+    expect(result?.customerEmail).toBe('student@example.com')
+    expect(result?.messageId).toBe('fixture-plus@mail.postmarkapp.com')
   })
 })

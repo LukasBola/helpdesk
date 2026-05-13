@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-multiline@mail.postmarkapp.com",
+  "From": "student@example.com",
+  "FromFull": { "Email": "student@example.com", "Name": "Student" },
+  "Subject": "Multiple issues",
+  "TextBody": "Issue 1: Cannot access course.\n\nIssue 2: Certificate not generated.\n\nIssue 3: Billing charged twice.\n\nPlease resolve all of these.",
+  "HtmlBody": "",
+  "To": "support@helpdesk.com"
+}

@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-unicode@mail.postmarkapp.com",
+  "From": "student@example.com",
+  "FromFull": { "Email": "student@example.com", "Name": "学生" },
+  "Subject": "请帮帮我 — 无法访问课程",
+  "TextBody": "I cannot access the course. Please help.",
+  "HtmlBody": "",
+  "To": "support@helpdesk.com"
+}

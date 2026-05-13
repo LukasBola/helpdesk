@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-fwd@mail.postmarkapp.com",
+  "From": "manager@example.com",
+  "FromFull": { "Email": "manager@example.com", "Name": "Manager" },
+  "Subject": "Fwd: Student cannot access course",
+  "TextBody": "Please handle this.\n\n---------- Forwarded message ---------\nFrom: student@example.com\nSubject: Cannot access course\n\nI paid but cannot access the course.",
+  "HtmlBody": "",
+  "To": "support@helpdesk.com"
+}

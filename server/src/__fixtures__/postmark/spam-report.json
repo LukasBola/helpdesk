@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-spam@mail.postmarkapp.com",
+  "From": "spam@spammer.com",
+  "FromFull": { "Email": "spam@spammer.com", "Name": "Discount Offers" },
+  "Subject": "YOU HAVE WON A PRIZE!!!",
+  "TextBody": "Click here to claim your prize. Buy now. Limited offer.",
+  "HtmlBody": "",
+  "To": "support@helpdesk.com"
+}
