@@ -6,7 +6,7 @@ import { env } from '../env'
 
 export const EMAIL_JOB = 'process-email'
 
-interface PostmarkPayload {
+export interface PostmarkPayload {
   MessageID: string
   From: string
   FromFull: { Email: string; Name: string }

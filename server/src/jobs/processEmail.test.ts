@@ -1,6 +1,9 @@
 import { afterAll, describe, expect, it } from 'vitest'
 
+import autoResponder from '../__fixtures__/postmark/auto-responder.json'
+import plainText from '../__fixtures__/postmark/plain-text.json'
 import { prisma } from '../db'
+import type { PostmarkPayload } from './processEmail'
 import { parsePostmarkPayload } from './processEmail'
 
 describe('parsePostmarkPayload', () => {
@@ -88,5 +91,20 @@ describe('ticket creation (integration)', () => {
     await prisma.ticket.create({ data })
 
     await expect(prisma.ticket.create({ data })).rejects.toThrow()
+  })
+})
+
+describe('fixture tests', () => {
+  it('parses plain-text fixture', () => {
+    const result = parsePostmarkPayload(plainText as PostmarkPayload)
+    expect(result?.subject).toBe('Cannot access course')
+    expect(result?.customerName).toBe('Jane Student')
+  })
+
+  it('rejects auto-responder from own domain', () => {
+    const result = parsePostmarkPayload(autoResponder as PostmarkPayload, {
+      ownDomain: 'helpdesk.com',
+    })
+    expect(result).toBeNull()
   })
 })
