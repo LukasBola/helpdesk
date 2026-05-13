@@ -21,15 +21,16 @@ async function main() {
 
   const shutdown = () => {
     logger.info('Shutting down...')
-    server.close()
-    stopQueue()
-      .then(() => {
-        process.exit(0)
-      })
-      .catch(err => {
-        logger.error({ err }, 'Error during shutdown')
-        process.exit(1)
-      })
+    server.close(() => {
+      stopQueue()
+        .then(() => {
+          process.exit(0)
+        })
+        .catch(err => {
+          logger.error({ err }, 'Error during shutdown')
+          process.exit(1)
+        })
+    })
   }
 
   process.on('SIGTERM', shutdown)
