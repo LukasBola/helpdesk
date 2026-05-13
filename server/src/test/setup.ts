@@ -22,6 +22,7 @@ export async function setup() {
   process.env.DATABASE_URL = url
   process.env.SESSION_SECRET = 'test-secret-that-is-at-least-32-chars'
   process.env.NODE_ENV = 'test'
+  process.env.POSTMARK_WEBHOOK_TOKEN = 'test-token'
 
   const prismaPath = path.join(__dirname, '../../node_modules/prisma/build/index.js')
   const serverDir = path.join(__dirname, '../..')
