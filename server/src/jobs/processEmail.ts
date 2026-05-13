@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import type { PgBoss } from 'pg-boss'
 
 import { prisma } from '../db'
@@ -45,7 +46,7 @@ export function parsePostmarkPayload(
   return {
     messageId: payload.MessageID,
     customerEmail: payload.FromFull.Email,
-    customerName: payload.FromFull.Name || payload.From,
+    customerName: payload.FromFull.Name || payload.FromFull.Email,
     subject: payload.Subject,
     body,
   }
@@ -72,8 +73,7 @@ export async function registerEmailWorker(boss: PgBoss): Promise<void> {
         },
       })
     } catch (err: unknown) {
-      const prismaErr = err as { code?: string }
-      if (prismaErr.code === 'P2002') {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         // Unique constraint — duplicate messageId, silently ignore
         console.log(`[processEmail] Duplicate messageId: ${parsed.messageId}`)
         return
