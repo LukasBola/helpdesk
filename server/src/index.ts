@@ -2,13 +2,15 @@ import './env'
 
 import { app } from './app'
 import { env } from './env'
-import { logger } from './lib/logger'
+import { registerEmailWorker } from './jobs/processEmail'
+import { getQueue } from './jobs/queue'
 
-const server = app.listen(env.PORT, () => {
-  logger.info({ port: env.PORT }, 'Server started')
-})
+async function main() {
+  const queue = await getQueue()
+  await registerEmailWorker(queue)
+  app.listen(env.PORT, () => {
+    console.log(`Server running on port ${env.PORT}`)
+  })
+}
 
-server.on('error', err => {
-  logger.error({ err }, 'Server failed to start')
-  process.exit(1)
-})
+main().catch(console.error)
