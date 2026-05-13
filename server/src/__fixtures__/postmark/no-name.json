@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-noname@mail.postmarkapp.com",
+  "From": "anon@example.com",
+  "FromFull": { "Email": "anon@example.com", "Name": "" },
+  "Subject": "Question",
+  "TextBody": "I have a question about my subscription.",
+  "HtmlBody": "",
+  "To": "support@helpdesk.com"
+}

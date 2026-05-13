@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-autoresponder@mail.postmarkapp.com",
+  "From": "noreply@helpdesk.com",
+  "FromFull": { "Email": "noreply@helpdesk.com", "Name": "Helpdesk" },
+  "Subject": "Auto: ticket received",
+  "TextBody": "We received your message.",
+  "HtmlBody": "",
+  "To": "support@helpdesk.com"
+}

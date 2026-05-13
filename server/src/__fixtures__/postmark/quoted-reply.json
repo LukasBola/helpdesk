@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-quoted@mail.postmarkapp.com",
+  "From": "student@example.com",
+  "FromFull": { "Email": "student@example.com", "Name": "Jane Student" },
+  "Subject": "Re: Your ticket #abc",
+  "TextBody": "Still not working.\n\n> On 1 Jan 2025, support wrote:\n> We are looking into this.",
+  "HtmlBody": "<p>Still not working.</p><blockquote>On 1 Jan 2025, support wrote: We are looking into this.</blockquote>",
+  "To": "support+ticket-abc@helpdesk.com"
+}

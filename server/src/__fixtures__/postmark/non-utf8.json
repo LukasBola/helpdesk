@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-nonutf8@mail.postmarkapp.com",
+  "From": "student@example.com",
+  "FromFull": { "Email": "student@example.com", "Name": "René Müller" },
+  "Subject": "Problème accès cours",
+  "TextBody": "Bonjour, je n'arrive pas à accéder au cours.",
+  "HtmlBody": "",
+  "To": "support@helpdesk.com"
+}

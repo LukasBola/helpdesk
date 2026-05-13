@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-reply@mail.postmarkapp.com",
+  "From": "student@example.com",
+  "FromFull": { "Email": "student@example.com", "Name": "Jane Student" },
+  "Subject": "Re: Your ticket #xyz",
+  "TextBody": "Thanks for the reply. It still doesn't work.",
+  "HtmlBody": "<div>Thanks for the reply. It still doesn't work.</div><blockquote>Original message here</blockquote>",
+  "To": "support+ticket-xyz@helpdesk.com"
+}

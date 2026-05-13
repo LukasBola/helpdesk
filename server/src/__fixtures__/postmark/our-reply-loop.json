@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-ourreply@mail.postmarkapp.com",
+  "From": "support@helpdesk.com",
+  "FromFull": { "Email": "support@helpdesk.com", "Name": "Helpdesk Support" },
+  "Subject": "Re: Your ticket",
+  "TextBody": "We are looking into your issue.",
+  "HtmlBody": "",
+  "To": "student@example.com"
+}

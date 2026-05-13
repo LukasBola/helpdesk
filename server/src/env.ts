@@ -7,6 +7,7 @@ const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   ANTHROPIC_API_KEY: z.string().optional(),
   POSTMARK_WEBHOOK_TOKEN: z.string().optional(),
+  OWN_DOMAIN: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
 })
 

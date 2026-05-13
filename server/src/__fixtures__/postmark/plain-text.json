@@ -1,0 +1,9 @@
+{
+  "MessageID": "fixture-plain@mail.postmarkapp.com",
+  "From": "student@example.com",
+  "FromFull": { "Email": "student@example.com", "Name": "Jane Student" },
+  "Subject": "Cannot access course",
+  "TextBody": "Hi, I paid for the React course but cannot access it. My order number is 12345.",
+  "HtmlBody": "",
+  "To": "support@helpdesk.com"
+}
