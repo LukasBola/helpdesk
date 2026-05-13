@@ -1,3 +1,4 @@
+import type { PgBoss } from 'pg-boss'
 import request from 'supertest'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -15,6 +16,7 @@ const validPayload = {
 
 vi.mock('../jobs/queue', () => ({
   getQueue: vi.fn().mockResolvedValue({
+    createQueue: vi.fn().mockResolvedValue(undefined),
     send: vi.fn().mockResolvedValue('job-id'),
   }),
 }))
@@ -35,5 +37,19 @@ describe('POST /api/webhooks/postmark', () => {
       .set('X-Postmark-Token', 'wrong-token')
       .send(validPayload)
     expect(res.status).toBe(401)
+  })
+
+  it('returns 500 when queue.send throws', async () => {
+    const { getQueue } = await import('../jobs/queue')
+    vi.mocked(getQueue).mockResolvedValueOnce({
+      createQueue: vi.fn().mockResolvedValue(undefined),
+      send: vi.fn().mockRejectedValue(new Error('Queue unavailable')),
+    } as unknown as PgBoss)
+
+    const res = await request(app)
+      .post('/api/webhooks/postmark')
+      .set('X-Postmark-Token', process.env.POSTMARK_WEBHOOK_TOKEN ?? 'test-token')
+      .send(validPayload)
+    expect(res.status).toBe(500)
   })
 })

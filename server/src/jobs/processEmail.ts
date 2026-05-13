@@ -3,6 +3,7 @@ import type { PgBoss } from 'pg-boss'
 
 import { prisma } from '../db'
 import { env } from '../env'
+import { logger } from '../lib/logger'
 
 export const EMAIL_JOB = 'process-email'
 
@@ -35,9 +36,9 @@ export function parsePostmarkPayload(
   payload: PostmarkPayload,
   options: { ownDomain?: string } = {},
 ): ParsedEmail | null {
-  const senderDomain = payload.FromFull.Email.split('@')[1]
+  const senderDomain = payload.FromFull.Email.split('@')[1]?.toLowerCase()
 
-  if (options.ownDomain && senderDomain === options.ownDomain) {
+  if (options.ownDomain && senderDomain === options.ownDomain.toLowerCase()) {
     return null
   }
 
@@ -53,12 +54,13 @@ export function parsePostmarkPayload(
 }
 
 export async function registerEmailWorker(boss: PgBoss): Promise<void> {
+  await boss.createQueue(EMAIL_JOB)
   await boss.work<PostmarkPayload>(EMAIL_JOB, async ([job]) => {
     const ownDomain = env.OWN_DOMAIN
     const parsed = parsePostmarkPayload(job.data, { ownDomain })
 
     if (!parsed) {
-      console.log(`[processEmail] Skipping loop email: ${job.data.MessageID}`)
+      logger.info({ messageId: job.data.MessageID }, 'Skipping loop email')
       return
     }
 
@@ -75,7 +77,7 @@ export async function registerEmailWorker(boss: PgBoss): Promise<void> {
     } catch (err: unknown) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         // Unique constraint — duplicate messageId, silently ignore
-        console.log(`[processEmail] Duplicate messageId: ${parsed.messageId}`)
+        logger.info({ messageId: parsed.messageId }, 'Duplicate messageId, skipping')
         return
       }
       throw err
