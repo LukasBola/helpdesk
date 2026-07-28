@@ -36,9 +36,9 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await prisma.ticketHistory.deleteMany()
-  await prisma.ticket.deleteMany()
-  await prisma.user.deleteMany()
+  await prisma.ticketHistory.deleteMany({ where: { ticketId } })
+  await prisma.ticket.deleteMany({ where: { id: ticketId } })
+  await prisma.user.deleteMany({ where: { email: 'agent-ticket@test.com' } })
 })
 
 describe('GET /api/tickets', () => {
