@@ -91,4 +91,12 @@ describe('PATCH /api/tickets/:id', () => {
       .send({ status: 'INVALID' })
     expect(res.status).toBe(422)
   })
+
+  it('routes unknown id errors to the error handler instead of hanging', async () => {
+    const res = await request(app)
+      .patch('/api/tickets/does-not-exist')
+      .set('Cookie', cookie)
+      .send({ status: 'IN_PROGRESS' })
+    expect(res.status).toBe(500)
+  })
 })

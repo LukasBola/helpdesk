@@ -1,3 +1,4 @@
+import type { NextFunction } from 'express'
 import { Router } from 'express'
 import { z } from 'zod'
 
@@ -19,23 +20,31 @@ const listQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).optional(),
 })
 
-router.get('/', async (req, res) => {
-  const result = listQuerySchema.safeParse(req.query)
-  if (!result.success) {
-    res.status(422).json({ error: result.error.flatten() })
-    return
+router.get('/', async (req, res, next: NextFunction) => {
+  try {
+    const result = listQuerySchema.safeParse(req.query)
+    if (!result.success) {
+      res.status(422).json({ error: result.error.flatten() })
+      return
+    }
+    const data = await listTickets(result.data)
+    res.json(data)
+  } catch (err) {
+    next(err)
   }
-  const data = await listTickets(result.data)
-  res.json(data)
 })
 
-router.get('/:id', async (req, res) => {
-  const ticket = await findTicketById(req.params.id)
-  if (!ticket) {
-    res.status(404).json({ error: 'Not found' })
-    return
+router.get('/:id', async (req, res, next: NextFunction) => {
+  try {
+    const ticket = await findTicketById(req.params.id)
+    if (!ticket) {
+      res.status(404).json({ error: 'Not found' })
+      return
+    }
+    res.json(ticket)
+  } catch (err) {
+    next(err)
   }
-  res.json(ticket)
 })
 
 const updateBodySchema = z.object({
@@ -44,15 +53,19 @@ const updateBodySchema = z.object({
   assigneeId: z.string().nullable().optional(),
 })
 
-router.patch('/:id', async (req, res) => {
-  const result = updateBodySchema.safeParse(req.body)
-  if (!result.success) {
-    res.status(422).json({ error: result.error.flatten() })
-    return
-  }
+router.patch('/:id', async (req, res, next: NextFunction) => {
+  try {
+    const result = updateBodySchema.safeParse(req.body)
+    if (!result.success) {
+      res.status(422).json({ error: result.error.flatten() })
+      return
+    }
 
-  const ticket = await updateTicket(req.params.id, result.data, req.session.userId as string)
-  res.json(ticket)
+    const ticket = await updateTicket(req.params.id, result.data, req.session.userId as string)
+    res.json(ticket)
+  } catch (err) {
+    next(err)
+  }
 })
 
 export default router
