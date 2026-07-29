@@ -69,44 +69,45 @@ interface UpdateFields {
 }
 
 export async function updateTicket(id: string, fields: UpdateFields, actorId: string) {
-  const current = await prisma.ticket.findUniqueOrThrow({ where: { id } })
+  return prisma.$transaction(async tx => {
+    const current = await tx.ticket.findUnique({ where: { id } })
+    if (!current) return null
 
-  const historyEntries: Prisma.TicketHistoryCreateManyInput[] = []
+    const historyEntries: Prisma.TicketHistoryCreateManyInput[] = []
 
-  if (fields.status && fields.status !== current.status) {
-    historyEntries.push({
-      ticketId: id,
-      userId: actorId,
-      field: 'status',
-      oldValue: current.status,
-      newValue: fields.status,
-    })
-  }
-  if (fields.priority && fields.priority !== current.priority) {
-    historyEntries.push({
-      ticketId: id,
-      userId: actorId,
-      field: 'priority',
-      oldValue: current.priority,
-      newValue: fields.priority,
-    })
-  }
-  if ('assigneeId' in fields && fields.assigneeId !== current.assigneeId) {
-    historyEntries.push({
-      ticketId: id,
-      userId: actorId,
-      field: 'assigneeId',
-      oldValue: current.assigneeId ?? null,
-      newValue: fields.assigneeId ?? null,
-    })
-  }
+    if (fields.status && fields.status !== current.status) {
+      historyEntries.push({
+        ticketId: id,
+        userId: actorId,
+        field: 'status',
+        oldValue: current.status,
+        newValue: fields.status,
+      })
+    }
+    if (fields.priority && fields.priority !== current.priority) {
+      historyEntries.push({
+        ticketId: id,
+        userId: actorId,
+        field: 'priority',
+        oldValue: current.priority,
+        newValue: fields.priority,
+      })
+    }
+    if ('assigneeId' in fields && fields.assigneeId !== current.assigneeId) {
+      historyEntries.push({
+        ticketId: id,
+        userId: actorId,
+        field: 'assigneeId',
+        oldValue: current.assigneeId ?? null,
+        newValue: fields.assigneeId ?? null,
+      })
+    }
 
-  const [updated] = await prisma.$transaction([
-    prisma.ticket.update({ where: { id }, data: fields }),
-    ...(historyEntries.length > 0
-      ? [prisma.ticketHistory.createMany({ data: historyEntries })]
-      : []),
-  ])
+    const updated = await tx.ticket.update({ where: { id }, data: fields })
+    if (historyEntries.length > 0) {
+      await tx.ticketHistory.createMany({ data: historyEntries })
+    }
 
-  return updated
+    return updated
+  })
 }

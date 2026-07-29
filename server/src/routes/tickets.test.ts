@@ -92,11 +92,19 @@ describe('PATCH /api/tickets/:id', () => {
     expect(res.status).toBe(422)
   })
 
-  it('routes unknown id errors to the error handler instead of hanging', async () => {
+  it('returns 404 for unknown id on PATCH', async () => {
     const res = await request(app)
       .patch('/api/tickets/does-not-exist')
       .set('Cookie', cookie)
       .send({ status: 'IN_PROGRESS' })
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 422 for invalid assigneeId', async () => {
+    const res = await request(app)
+      .patch(`/api/tickets/${ticketId}`)
+      .set('Cookie', cookie)
+      .send({ assigneeId: 'not-a-valid-id' })
+    expect(res.status).toBe(422)
   })
 })

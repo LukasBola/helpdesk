@@ -30,8 +30,8 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await prisma.ticketHistory.deleteMany()
-  await prisma.ticket.deleteMany()
+  await prisma.ticketHistory.deleteMany({ where: { ticketId } })
+  await prisma.ticket.deleteMany({ where: { id: ticketId } })
   await prisma.user.deleteMany({ where: { id: 'user-system' } })
 })
 
@@ -63,7 +63,8 @@ describe('findTicketById', () => {
 describe('updateTicket', () => {
   it('updates status and writes history entry', async () => {
     const updated = await updateTicket(ticketId, { status: 'IN_PROGRESS' }, 'user-system')
-    expect(updated.status).toBe('IN_PROGRESS')
+    expect(updated).not.toBeNull()
+    expect(updated?.status).toBe('IN_PROGRESS')
 
     const history = await prisma.ticketHistory.findMany({ where: { ticketId } })
     expect(history).toHaveLength(1)

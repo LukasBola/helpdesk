@@ -50,7 +50,7 @@ router.get('/:id', async (req, res, next: NextFunction) => {
 const updateBodySchema = z.object({
   status: z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
-  assigneeId: z.string().nullable().optional(),
+  assigneeId: z.string().cuid().nullable().optional(),
 })
 
 router.patch('/:id', async (req, res, next: NextFunction) => {
@@ -62,6 +62,10 @@ router.patch('/:id', async (req, res, next: NextFunction) => {
     }
 
     const ticket = await updateTicket(req.params.id, result.data, req.session.userId as string)
+    if (!ticket) {
+      res.status(404).json({ error: 'Not found' })
+      return
+    }
     res.json(ticket)
   } catch (err) {
     next(err)
