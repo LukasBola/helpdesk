@@ -1,7 +1,7 @@
 # Design: Migracja autentykacji na Better Auth
 
-**Data:** 2026-07-28
-**Status:** Zaakceptowany, gotowy do `/writing-plans`
+**Data:** 2026-07-28 (rewizja 2: 2026-10-28)
+**Status:** Zaakceptowany, plan: `docs/superpowers/plans/2026-07-28-better-auth-migration.md`
 
 ## Kontekst i cel
 
@@ -11,98 +11,163 @@ Cel migracji: **mniej własnego kodu do utrzymania**. Oddajemy zarządzanie sesj
 
 Zakres: **1:1 zamiennik** — tylko email + hasło, zachowując role (`AGENT`/`ADMIN`) i `isBlocked`. Bez OAuth i bez 2FA w tej migracji (mogą być dodane później jako osobne pluginy Better Auth, bez zmiany fundamentu).
 
-**Timing:** migracja wykonywana jako osobny branch/worktree, **po** zamknięciu obecnego Planu 04 (ticket-api) — to zmiana przekrojowa (middleware `requireAuth`/`requireRole` używane w każdym chronionym endpoincie), więc robienie jej równolegle z ticket-api groziłoby konfliktami mieszającymi dwa niezwiązane cele w jednym branchu.
+**Timing:** osobny branch/worktree, **po** zamknięciu Planu 04 (ticket-api). Plan 04 jest już zmergowany (`b8ec8e7`), więc `routes/tickets.ts` i jego testy **wchodzą w zakres** tej migracji (używają `req.session.userId` i logowania przez `/api/auth/login`).
 
-Frontend nie ma jeszcze żadnych stron (login itd. nie zbudowany) — ta migracja obejmuje tylko backend; wpływ na przyszły Plan 05 (frontend-core) jest odnotowany w sekcji "Poza zakresem".
+Frontend nie ma jeszcze żadnych stron — migracja obejmuje tylko backend. Wpływ na plany 05/08/09/11 opisany w sekcji „Wpływ na kolejne plany”.
 
 ## Model danych
 
-Wariant: **Better Auth przejmuje istniejący model `User`** (nie tworzymy osobnej tabeli profilu) — najmniejszy blast radius, żadne FK się nie zmieniają.
+Wariant: **Better Auth przejmuje istniejący model `User`** (bez osobnej tabeli profilu) — najmniejszy blast radius, żadne FK się nie zmieniają.
 
-- Model `User` w Prisma zostaje tym samym modelem, ale mapowanym na potrzeby Better Auth: `user: { modelName: "users", fields: {...} }` w konfiguracji.
-- `role` (enum `AGENT`/`ADMIN`) i `isBlocked` dodane jako `additionalFields` na modelu `user` — trafiają automatycznie do sesji zwracanej przez `getSession`/`useSession`, bez potrzeby dodatkowego pluginu (`customSession` niepotrzebny w tym wariancie).
-- `passwordHash` znika z modelu `User` — dane logowania (hash hasła) przenoszą się do tabeli `Account`, generowanej i zarządzanej przez Better Auth.
-- `Ticket.assigneeId`, `Reply.userId`, `TicketHistory.userId` **nie zmieniają się** — nadal FK do `User.id`, bo to wciąż ten sam model/tabela.
-- Stary custom model `Session` (`connect-pg-simple`, `@@map("session")`) zostaje usunięty. Better Auth generuje własną tabelę `session` (inny układ kolumn: `token`, `expiresAt`, `ipAddress`, `userAgent` zamiast `sid`/`sess`/`expire` JSON blob).
-- Better Auth dodaje też tabele `Account` (credentials/OAuth) i `Verification` (tokeny weryfikacji email/reset hasła) — obecnie nieużywane funkcjonalnie poza przechowywaniem hasła, ale wymagane przez adapter.
+- Model Prisma nazywa się `User` (accessor `prisma.user`), co jest domyślną nazwą oczekiwaną przez adapter Prisma Better Auth — **nie potrzeba** `user.modelName` ani mapowania pól. `@@map("users")` dotyczy tylko nazwy tabeli w SQL i adaptera nie interesuje.
+- Do `User` dochodzi `emailVerified Boolean @default(false)` (wymagane przez Better Auth) oraz relacje `sessions`/`accounts`.
+- `role` (enum `AGENT`/`ADMIN`) i `isBlocked` jako `user.additionalFields` z `input: false` — trafiają do `session.user` zwracanego przez `getSession`, a nie da się ich ustawić przez publiczne API.
+- `passwordHash` znika z `User` — hash hasła żyje w tabeli `account` (`providerId: 'credential'`).
+- `Ticket.assigneeId`, `Reply.userId`, `TicketHistory.userId` **bez zmian**.
+- Stary model `Session` (`connect-pg-simple`: `sid`/`sess`/`expire`) zastąpiony modelem Better Auth (`token`, `expiresAt`, `ipAddress`, `userAgent`, `userId`) — ta sama nazwa tabeli `session`.
+- Nowe tabele `account` i `verification` (wymagane przez adapter).
+- `advanced.database.generateId: false` — ID generuje Prisma (`@default(cuid())`), spójnie z resztą schematu. _(zweryfikowane w docs Better Auth)_
 
 ## Wiring po stronie serwera
 
-- **`server/src/lib/auth.ts` (nowy)** — instancja Better Auth:
-  ```ts
-  betterAuth({
-    database: prismaAdapter(prisma, { provider: 'postgresql' }),
-    emailAndPassword: { enabled: true },
-    user: {
-      modelName: 'users',
-      fields: {
-        /* mapowanie na istniejące kolumny */
-      },
-      additionalFields: {
-        role: { type: ['AGENT', 'ADMIN'], required: false, defaultValue: 'AGENT', input: false },
-        isBlocked: { type: 'boolean', required: false, defaultValue: false, input: false },
-      },
+### `server/src/lib/auth.ts` (nowy)
+
+```ts
+betterAuth({
+  database: prismaAdapter(prisma, { provider: 'postgresql' }),
+  advanced: { database: { generateId: false } },
+  emailAndPassword: { enabled: true, disableSignUp: true },
+  user: {
+    additionalFields: {
+      role: { type: ['AGENT', 'ADMIN'], required: false, defaultValue: 'AGENT', input: false },
+      isBlocked: { type: 'boolean', required: false, defaultValue: false, input: false },
     },
-    secret: env.BETTER_AUTH_SECRET,
-    baseURL: env.BETTER_AUTH_URL,
-    hooks: {
-      before: [
-        /* patrz niżej: blokada logowania */
-      ],
-    },
-  })
-  ```
-- **Blokada logowania:** hook `hooks.before` dopasowany do ścieżki `/sign-in/email` odrzuca próbę logowania, jeśli `user.isBlocked === true` — odpowiednik dzisiejszego sprawdzenia w `routes/auth.ts`.
-- **Mount handlera:** `app.all("/api/auth/*", toNodeHandler(auth))`, zarejestrowany **przed** `express.json()` (Better Auth wymaga tej kolejności — inaczej klient wisi na "pending"). Całkowicie zastępuje `server/src/routes/auth.ts`; endpointy `/api/auth/sign-in/email`, `/api/auth/sign-out`, `/api/auth/get-session` itd. dostarcza sama biblioteka.
-- **`server/src/middleware/auth.ts` (przepisany):**
+  },
+  databaseHooks: {
+    session: { create: { before: /* odrzuć, jeśli user.isBlocked */ } },
+  },
+  secret: env.BETTER_AUTH_SECRET,
+  baseURL: env.BETTER_AUTH_URL,
+})
+```
 
-  ```ts
-  requireAuth: pobiera session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) })
-    brak sesji -> 401
-    session.user.isBlocked -> 401 (chroni przed zablokowaniem w trakcie trwania sesji)
-    inaczej req.currentUser = session.user; next()
+**Decyzje (rewizja 2):**
 
-  requireRole(role): jak requireAuth + session.user.role !== role -> 403
-  ```
+1. **`disableSignUp: true`** — bez tego Better Auth wystawia publiczne `POST /api/auth/sign-up/email` i każdy mógłby założyć konto AGENT i czytać tickety. Dziś rejestracji nie ma, więc to byłaby regresja bezpieczeństwa. _Zweryfikowane:_ flaga jest sprawdzana w handlerze sign-up, więc blokuje **także** `auth.api.signUpEmail()` wywołane po stronie serwera — seed i testy nie mogą go używać.
+2. **Tworzenie użytkowników: `server/src/lib/users.ts` → `createCredentialUser()`** — hashuje hasło przez `(await auth.$context).password.hash()` (ten sam hasher, którego Better Auth używa przy logowaniu) i w transakcji Prisma tworzy `User` + `Account { providerId: 'credential', accountId: user.id, password }`. To ten sam wzorzec, którego używa plugin `admin` Better Auth (`createUser` + `password.hash` + `linkAccount`). Używają go: seed, testy, a w przyszłości Plan 09 (zarządzanie użytkownikami).
+3. **Blokada logowania przez `databaseHooks.session.create.before`**, a nie `hooks.before` na `/sign-in/email`. Hook bazodanowy odpala się dopiero **po** poprawnej weryfikacji hasła, tuż przed utworzeniem sesji. Dzięki temu:
+   - nie ma timing leaka (wersja z `hooks.before` odpowiadała szybciej dla zablokowanych kont — stary kod celowo robił `bcrypt.compare` na `DUMMY_HASH`),
+   - blokada obejmuje **każdą** ścieżkę tworzenia sesji (także przyszłe OAuth/pluginy), nie tylko `/sign-in/email`.
+     Hook rzuca `APIError('UNAUTHORIZED', { message: 'Invalid credentials' })`. _(zweryfikowane: rzucenie `APIError` z hooka bazodanowego przerywa operację)_
+4. **Bez `session.cookieCache`** — przy włączonym cache `getSession` czyta usera z ciasteczka, więc `isBlocked`/`role` byłyby nieaktualne do wygaśnięcia cache. Domyślnie jest wyłączony; nie włączamy go.
 
-  Sygnatura (`(req, res, next)`) i miejsca użycia w innych routach (Plan 04, Plan 09) się nie zmieniają.
+### Mount handlera
 
-- **Usuwane pliki:** `server/src/lib/session.ts`, `server/src/types/session.d.ts`, `server/src/routes/auth.ts`, `server/src/routes/auth.test.ts`.
-- **`app.ts`:** usunięcie `sessionMiddleware`, `authRouter`; dodanie mount handlera Better Auth przed `express.json()`.
+`app.all('/api/auth/*', toNodeHandler(auth))` **przed** `express.json()` (Express 4 — dla Express 5 byłoby `/api/auth/*splat`). _(zweryfikowane w docs integracji Express)_ Zastępuje `server/src/routes/auth.ts`. Endpointy: `POST /api/auth/sign-in/email`, `POST /api/auth/sign-out`, `GET /api/auth/get-session` itd. `/api/tickets` i `/api/webhooks` pozostają zamontowane.
+
+### `server/src/middleware/auth.ts` (przepisany)
+
+```text
+loadCurrentUser(req):
+  jeśli req.currentUser już ustawiony -> zwróć go (requireAuth + requireRole na jednym routerze = 1 zapytanie, nie 2)
+  session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) })
+  brak sesji lub session.user.isBlocked -> null   (blokada w trakcie trwającej sesji)
+  req.currentUser = { id, role }
+
+requireAuth:       null -> 401, inaczej next()
+requireRole(role): null -> 401, poziom roli < wymagany -> 403 (hierarchia: ADMIN przechodzi check AGENT), inaczej next()
+oba: wyjątek (np. DB down) -> next(err)   (Express 4 nie łapie odrzuconych promise'ów)
+```
+
+Sygnatury się nie zmieniają. `req.session.userId` → `req.currentUser.id` (typ w `server/src/types/express.d.ts`).
+
+### Origin / CSRF _(zweryfikowane w docs)_
+
+- Better Auth domyślnie ufa tylko `baseURL`. Requesty bez `Origin`/`Referer` i bez nagłówków Fetch Metadata (supertest, curl) przy logowaniu są przepuszczane.
+- Przy requestach z ciasteczkiem Better Auth waliduje `Origin`. Testy supertest dla `sign-out` wysyłają więc `Origin: BETTER_AUTH_URL`.
+- Frontend (Plan 05) na innym originie (`http://localhost:5173`) będzie wymagał `trustedOrigins` — poza zakresem tej migracji.
+
+### Pliki usuwane
+
+`server/src/lib/session.ts`, `server/src/types/session.d.ts`, `server/src/routes/auth.ts`, `server/src/routes/auth.test.ts`.
+
+### Pliki zmieniane poza auth (przegapione w rewizji 1)
+
+- `server/src/routes/tickets.ts` — `req.session.userId` → `req.currentUser`.
+- `server/src/routes/tickets.test.ts` — user przez `createCredentialUser`, logowanie przez `/api/auth/sign-in/email`.
+- `server/src/services/ticketService.test.ts` — usunięcie `passwordHash` z fixture.
+- `server/src/db.test.ts` — `prisma.session` nadal istnieje (nowy kształt), dodać `prisma.account`.
+- `server/src/env.test.ts`, `server/src/test/setup.ts` — nowe zmienne env.
 
 ## Env
 
 `server/src/env.ts`:
 
-- Usunięcie `SESSION_SECRET`.
-- Dodanie `BETTER_AUTH_SECRET: z.string().min(32)`.
-- Dodanie `BETTER_AUTH_URL: z.string().min(1)` (baseURL, np. `http://localhost:3000` lokalnie).
-- Aktualizacja `.env.example` zgodnie z powyższym.
+- Dodanie `BETTER_AUTH_SECRET: z.string().min(32)` i `BETTER_AUTH_URL: z.string().url()`.
+- Usunięcie `SESSION_SECRET` — **dopiero po** usunięciu `lib/session.ts` (inaczej typecheck padnie).
+- `server/src/test/setup.ts` (globalSetup Vitest) ustawia nowe zmienne; `.env.example` zaktualizowany.
 
 ## Migracja bazy danych i seed
 
-Reset + reseed (brak prawdziwych danych produkcyjnych do zachowania):
+Reset + reseed (brak prawdziwych danych):
 
-1. `npx @better-auth/cli generate` dopisuje do `schema.prisma` modele `Session`, `Account`, `Verification` oraz konfigurację `additionalFields` na `User`.
-2. Ręczne usunięcie starego modelu `Session` (connect-pg-simple) i pola `passwordHash` z `User`.
-3. `prisma migrate dev -n better-auth-migration` — jedna migracja (drop starej tabeli `session`, nowe tabele `account`/`verification`, zmiana `users`).
+1. `prisma migrate reset --force --skip-seed` na lokalnej bazie **przed** zmianą schematu — nowa tabela `session` ma kolumny NOT NULL bez wartości domyślnych, a stary admin bez rekordu w `account` nie mógłby się zalogować.
+2. Ręczna edycja `schema.prisma` (modele w planie). `@better-auth/cli generate` nie jest potrzebny — modele są wpisane wprost.
+3. `prisma migrate dev -n better-auth-migration` — jedna migracja.
+4. Seed (`server/prisma/seed.ts`) używa `createCredentialUser({ ..., role: 'ADMIN' })`; idempotentny (pomija, jeśli email istnieje).
 
-`server/prisma/seed.ts`:
+## Strategia commitów
 
-- Zamiast `bcrypt.hash` + `prisma.user.upsert`, wywołanie `auth.api.signUpEmail({ body: { email, password, name } })`, a następnie `prisma.user.update({ where: { email }, data: { role: 'ADMIN' } })` — `role` ma `input: false` (nieustawiane przez publiczne API), więc seed ustawia je bezpośrednio w bazie po utworzeniu konta.
+`.husky/pre-commit` uruchamia `pnpm typecheck`, więc **każdy commit musi się kompilować**. Konsekwencje:
+
+- Nowe zależności i env dodajemy addytywnie (stare zostają) → commit zielony.
+- Zmiana schematu + nowy auth + middleware + wiring + poprawki ticketów to **jedna atomowa zmiana** (jeden commit) — pośrednie stany nie kompilują się (`passwordHash` znika, a stary kod go używa).
+- Usunięcie starych zależności i `SESSION_SECRET` — osobny commit po zamianie.
 
 ## Testy
 
-- `server/src/middleware/auth.test.ts`: mockujemy `auth.api.getSession` (zamiast `req.session`) — zwraca `{ user: { role, isBlocked } } | null`. Asercje 401/403 bez zmian w logice testowej.
-- `server/src/routes/auth.test.ts` → usuwany, zastąpiony przez `server/src/lib/auth.test.ts` (integracyjny, supertest), uderzający w zamontowane endpointy:
-  - `POST /api/auth/sign-in/email` — sukces (200 + cookie), błędne hasło (401), nieznany email (401).
-  - `POST /api/auth/sign-out` — niszczy sesję.
-  - `GET /api/auth/get-session` — zwraca dane sesji z `role`/`isBlocked` gdy zalogowany, `null`/401 gdy nie.
-  - Test na odrzucenie logowania zablokowanego użytkownika (hook `before`).
-- Brak innych plików w `server/src` odwołujących się dziś do `/api/auth/login`, `req.session` czy `express-session` poza wymienionymi wyżej (zweryfikowane grepem) — Plan 04 (ticket-api) jeszcze nie ma testów zależnych od starych endpointów logowania.
+- `server/src/middleware/auth.test.ts` — mock `auth.api.getSession`. Przypadki: brak sesji → 401, zablokowany → 401, OK → `next()` + `req.currentUser`, zła rola → 403, ADMIN przechodzi AGENT, `currentUser` już ustawiony → brak drugiego `getSession`, wyjątek → `next(err)`.
+- `server/src/lib/auth.test.ts` (przez `auth.api`, bez HTTP): poprawne logowanie, złe hasło, nieznany email, zablokowany user odrzucony, `signUpEmail` zablokowany przez `disableSignUp`.
+- `server/src/routes/auth.integration.test.ts` (supertest, nowy plik zastępujący `routes/auth.test.ts`): sign-in 200 + cookie, sign-in 401, `get-session` z `role`/`isBlocked`, `get-session` bez logowania → `null`, sign-out niszczy sesję, **zablokowanie w trakcie sesji → `/api/tickets` zwraca 401**, `POST /api/auth/sign-up/email` → odrzucony.
+- Wspólny helper `server/src/test/auth.ts` → `signIn(email, password)` zwraca nagłówek `Cookie`.
+
+## Zmiana kontraktu API (świadoma)
+
+| Przed                              | Po                                                   |
+| ---------------------------------- | ---------------------------------------------------- |
+| `POST /api/auth/login`             | `POST /api/auth/sign-in/email`                       |
+| `POST /api/auth/logout`            | `POST /api/auth/sign-out`                            |
+| `GET /api/auth/me` (401 bez sesji) | `GET /api/auth/get-session` (200 + `null` bez sesji) |
+| błąd walidacji logowania: 422      | 400 (format błędów Better Auth)                      |
+| cookie `connect.sid`               | cookie `better-auth.session_token`                   |
+
+Brak konsumentów (frontend nie istnieje), więc bez warstwy kompatybilności.
+
+## Wpływ na kolejne plany (`plans/`)
+
+Plany z maja zakładają stary auth — przed ich realizacją potrzebny świeży spec (brainstorming) i nowy plan:
+
+- **05 frontend-core** — `AuthContext` z `/auth/me` i login przez axios → `createAuthClient`/`useSession` z `better-auth/react`; dodać `trustedOrigins` dla originu Vite.
+- **08 email-replies** — testy z `bcrypt` + `/api/auth/login`, `req.session.userId` → `createCredentialUser`, `signIn()`, `req.currentUser`.
+- **09 user-management** — tworzenie userów przez `createCredentialUser` (albo plugin `admin` Better Auth — decyzja w specu Planu 09); blokowanie działa już per-request.
+- **11 e2e** — logowanie przez `/api/auth/sign-in/email`.
+- **index.md** — wiersz „Auth” w Tech Stack.
 
 ## Poza zakresem
 
-- OAuth (Google itp.) i 2FA — możliwe do dodania później jako pluginy Better Auth bez zmiany fundamentu z tego designu.
-- Frontend (Plan 05/06/09) — nie istnieje jeszcze żadna strona logowania ani hook `useAuth`. Gdy te plany będą realizowane, powinny użyć `createAuthClient`/`useSession` z `better-auth/react` zamiast budować własny klient auth od zera — to naturalna konsekwencja tej migracji, ale nie jest częścią obecnego planu implementacji.
-- Migracja istniejących haseł/sesji użytkowników — nie dotyczy, baza jest resetowana (brak prawdziwych kont poza seedem).
+- OAuth i 2FA — później jako pluginy.
+- Frontend (Plan 05/06/09).
+- Rate limiting — Better Auth włącza go domyślnie w produkcji; konfiguracja przy deployu.
+- Migracja istniejących haseł/sesji — baza jest resetowana.
+
+## Historia zmian
+
+**Rewizja 2 (2026-10-28)** — po review i weryfikacji w dokumentacji Better Auth (Context7):
+
+- dodano `disableSignUp` + `createCredentialUser` (publiczna rejestracja była luką),
+- blokada logowania przeniesiona z `hooks.before` do `databaseHooks.session.create.before` (timing leak),
+- usunięto błędne `user.modelName: 'users'` (adapter używa nazwy modelu Prisma, nie tabeli),
+- `requireRole` z hierarchią ról (zgodnie z obecnym kodem), a nie `role !== role`,
+- uwzględniono pliki Planu 04 (`tickets.ts`, `tickets.test.ts`, `ticketService.test.ts`) oraz `db.test.ts`, `env.test.ts`, `test/setup.ts`,
+- dodano reset bazy przed migracją i strategię commitów zgodną z pre-commit `typecheck`,
+- obsługa błędów w middleware (`next(err)`), test blokady w trakcie sesji, test nieznanego emaila.
