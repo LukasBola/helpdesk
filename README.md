@@ -19,7 +19,7 @@ A full-stack support ticket management system that uses AI to automatically clas
 | -------- | -------------------------------------------------------------------- |
 | Frontend | React, Vite, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query     |
 | Backend  | Express.js, TypeScript, Prisma, PostgreSQL, pgvector, pg-boss        |
-| Auth     | express-session + connect-pg-simple (database sessions)              |
+| Auth     | Better Auth (email + password, sessions in Postgres via Prisma)      |
 | AI       | Anthropic Claude API (direct SDK, structured output via Zod)         |
 | Email    | Postmark (inbound), Resend (outbound)                                |
 | Testing  | Vitest, React Testing Library, testcontainers, Playwright, promptfoo |
@@ -57,7 +57,8 @@ pnpm install
 
 # 3. Set up environment variables
 cp .env.example .env
-# Edit .env — at minimum set DATABASE_URL and SESSION_SECRET
+# Edit .env — at minimum set DATABASE_URL, BETTER_AUTH_SECRET and BETTER_AUTH_URL
+# Generate a secret with: openssl rand -base64 32
 
 # 4. Start the database
 docker compose up -d
@@ -85,7 +86,8 @@ pnpm dev
 | Variable                 | Required           | Description                                     |
 | ------------------------ | ------------------ | ----------------------------------------------- |
 | `DATABASE_URL`           | Yes                | PostgreSQL connection string                    |
-| `SESSION_SECRET`         | Yes                | Min 32 characters, used to sign session cookies |
+| `BETTER_AUTH_SECRET`     | Yes                | Min 32 characters, used to sign session cookies |
+| `BETTER_AUTH_URL`        | Yes                | Backend base URL, e.g. `http://localhost:3000`  |
 | `ANTHROPIC_API_KEY`      | For AI features    | Claude API key                                  |
 | `POSTMARK_WEBHOOK_TOKEN` | For inbound email  | Postmark webhook validation token               |
 | `RESEND_API_KEY`         | For outbound email | Resend API key for sending replies              |
