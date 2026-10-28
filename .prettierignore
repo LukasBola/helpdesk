@@ -26,3 +26,4 @@ evals/datasets/
 
 # Lockfile
 pnpm-lock.yaml
+.superpowers/

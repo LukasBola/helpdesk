@@ -22,6 +22,8 @@ describe('env', () => {
   it('parses valid env without throwing', async () => {
     vi.stubEnv('DATABASE_URL', 'postgresql://u:p@localhost:5432/db')
     vi.stubEnv('SESSION_SECRET', 'a'.repeat(32))
+    vi.stubEnv('BETTER_AUTH_SECRET', 'b'.repeat(32))
+    vi.stubEnv('BETTER_AUTH_URL', 'http://localhost:3000')
     vi.stubEnv('PORT', '3000')
     const { env } = await import('./env')
     expect(env.PORT).toBe(3000)
@@ -36,6 +38,8 @@ describe('env', () => {
   it('coerces PORT string to number', async () => {
     vi.stubEnv('DATABASE_URL', 'postgresql://u:p@localhost:5432/db')
     vi.stubEnv('SESSION_SECRET', 'a'.repeat(32))
+    vi.stubEnv('BETTER_AUTH_SECRET', 'b'.repeat(32))
+    vi.stubEnv('BETTER_AUTH_URL', 'http://localhost:3000')
     vi.stubEnv('PORT', '5000')
     const { env } = await import('./env')
     expect(env.PORT).toBe(5000)
@@ -45,6 +49,8 @@ describe('env', () => {
   it('uses PORT default when not provided', async () => {
     vi.stubEnv('DATABASE_URL', 'postgresql://u:p@localhost:5432/db')
     vi.stubEnv('SESSION_SECRET', 'a'.repeat(32))
+    vi.stubEnv('BETTER_AUTH_SECRET', 'b'.repeat(32))
+    vi.stubEnv('BETTER_AUTH_URL', 'http://localhost:3000')
     delete process.env.PORT
     const { env } = await import('./env')
     expect(env.PORT).toBe(3000)
@@ -53,8 +59,26 @@ describe('env', () => {
   it('allows optional fields to be undefined', async () => {
     vi.stubEnv('DATABASE_URL', 'postgresql://u:p@localhost:5432/db')
     vi.stubEnv('SESSION_SECRET', 'a'.repeat(32))
+    vi.stubEnv('BETTER_AUTH_SECRET', 'b'.repeat(32))
+    vi.stubEnv('BETTER_AUTH_URL', 'http://localhost:3000')
     delete process.env.PORT
     const { env } = await import('./env')
     expect(env.ANTHROPIC_API_KEY).toBeUndefined()
+  })
+
+  it('throws when BETTER_AUTH_SECRET is too short', async () => {
+    vi.stubEnv('DATABASE_URL', 'postgresql://u:p@localhost:5432/db')
+    vi.stubEnv('SESSION_SECRET', 'a'.repeat(32))
+    vi.stubEnv('BETTER_AUTH_SECRET', 'b'.repeat(31))
+    vi.stubEnv('BETTER_AUTH_URL', 'http://localhost:3000')
+    await expect(import('./env')).rejects.toThrow()
+  })
+
+  it('throws when BETTER_AUTH_URL is not a URL', async () => {
+    vi.stubEnv('DATABASE_URL', 'postgresql://u:p@localhost:5432/db')
+    vi.stubEnv('SESSION_SECRET', 'a'.repeat(32))
+    vi.stubEnv('BETTER_AUTH_SECRET', 'b'.repeat(32))
+    vi.stubEnv('BETTER_AUTH_URL', 'not-a-url')
+    await expect(import('./env')).rejects.toThrow()
   })
 })
