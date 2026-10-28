@@ -36,15 +36,18 @@ enum AIInteractionType {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String
-  passwordHash String
-  role         Role      @default(AGENT)
-  isBlocked    Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id            String   @id @default(cuid())
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  name          String
+  image         String?
+  role          Role     @default(AGENT)
+  isBlocked     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
+  sessions        Session[]
+  accounts        Account[]
   assignedTickets Ticket[]        @relation("AssignedTickets")
   history         TicketHistory[]
   replies         Reply[]
@@ -72,9 +75,9 @@ model Ticket {
   replies        Reply[]
   aiInteractions AIInteraction[]
 
-  @@map("tickets")
   @@index([customerEmail])
   @@index([status, assigneeId])
+  @@map("tickets")
 }
 
 model TicketHistory {
@@ -89,8 +92,8 @@ model TicketHistory {
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   user   User?  @relation(fields: [userId], references: [id])
 
-  @@map("ticket_history")
   @@index([ticketId])
+  @@map("ticket_history")
 }
 
 model Reply {
@@ -104,8 +107,8 @@ model Reply {
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id])
 
-  @@map("replies")
   @@index([ticketId])
+  @@map("replies")
 }
 
 model AIInteraction {
@@ -122,8 +125,8 @@ model AIInteraction {
 
   ticket Ticket? @relation(fields: [ticketId], references: [id])
 
-  @@map("ai_interactions")
   @@index([ticketId])
+  @@map("ai_interactions")
 }
 
 model Document {
@@ -138,10 +141,48 @@ model Document {
 }
 
 model Session {
-  sid    String   @id @db.VarChar
-  sess   Json
-  expire DateTime @db.Timestamp(6)
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([expire])
+  @@index([userId])
   @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
 }

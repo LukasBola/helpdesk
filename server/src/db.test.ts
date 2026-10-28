@@ -9,13 +9,15 @@ describe('database connection', () => {
   })
 
   it('can query all domain models without error', async () => {
-    const [users, tickets, sessions] = await Promise.all([
+    const [users, tickets, sessions, accounts] = await Promise.all([
       prisma.user.findMany({ take: 1 }),
       prisma.ticket.findMany({ take: 1 }),
       prisma.session.findMany({ take: 1 }),
+      prisma.account.findMany({ take: 1 }),
     ])
     expect(Array.isArray(users)).toBe(true)
     expect(Array.isArray(tickets)).toBe(true)
     expect(Array.isArray(sessions)).toBe(true)
+    expect(Array.isArray(accounts)).toBe(true)
   })
 })

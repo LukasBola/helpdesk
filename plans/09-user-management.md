@@ -1,5 +1,7 @@
 # Plan 09: User Management (Admin)
 
+> **⚠️ Outdated after the Better Auth migration.** This plan assumes `/api/auth/login`, `/api/auth/me`, `bcrypt` and `req.session`. Before executing it, write a fresh spec (superpowers:brainstorming) and plan. Use `createCredentialUser()` (`server/src/lib/users.ts`), the `signIn()` test helper (`server/src/test/auth.ts`), `req.currentUser`, and on the client `better-auth/react`. See "Wpływ na kolejne plany" in `docs/superpowers/specs/2026-07-28-better-auth-migration-design.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Admin-only CRUD for users — list all users, create new agents, update role, and block/unblock. Frontend user management page accessible only to ADMIN role.

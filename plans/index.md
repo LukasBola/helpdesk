@@ -38,7 +38,7 @@ Each plan produces working, testable software on its own before the next begins.
 
 - **Server:** Express + TypeScript + Prisma + PostgreSQL
 - **Client:** React + Vite + TanStack Query + Tailwind + shadcn/ui
-- **Auth:** express-session + connect-pg-simple
+- **Auth:** Better Auth (email + password, Prisma adapter) — see docs/superpowers/specs/2026-07-28-better-auth-migration-design.md
 - **Queue:** pg-boss (stored in Postgres)
 - **AI:** Anthropic Claude API (direct SDK, no LangChain)
 - **Email in:** Postmark webhook

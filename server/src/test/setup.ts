@@ -20,7 +20,8 @@ export async function setup() {
   const url = `postgresql://test:test@${host}:${port}/helpdesk_test`
 
   process.env.DATABASE_URL = url
-  process.env.SESSION_SECRET = 'test-secret-that-is-at-least-32-chars'
+  process.env.BETTER_AUTH_SECRET = 'test-better-auth-secret-at-least-32-chars'
+  process.env.BETTER_AUTH_URL = 'http://localhost:3000'
   process.env.NODE_ENV = 'test'
   process.env.POSTMARK_WEBHOOK_TOKEN = 'test-token'
 

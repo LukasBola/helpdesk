@@ -11,7 +11,6 @@ beforeAll(async () => {
       id: 'user-system',
       email: 'system@test.com',
       name: 'System',
-      passwordHash: 'not-a-real-hash',
       role: 'AGENT',
     },
   })

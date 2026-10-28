@@ -61,7 +61,7 @@ router.patch('/:id', async (req, res, next: NextFunction) => {
       return
     }
 
-    const ticket = await updateTicket(req.params.id, result.data, req.session.userId as string)
+    const ticket = await updateTicket(req.params.id, result.data, req.currentUser?.id as string)
     if (!ticket) {
       res.status(404).json({ error: 'Not found' })
       return
