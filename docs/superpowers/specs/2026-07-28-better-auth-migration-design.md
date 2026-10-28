@@ -149,7 +149,7 @@ Plany z maja zakładają stary auth — przed ich realizacją potrzebny świeży
 
 - **05 frontend-core** — `AuthContext` z `/auth/me` i login przez axios → `createAuthClient`/`useSession` z `better-auth/react`; dodać `trustedOrigins` dla originu Vite.
 - **08 email-replies** — testy z `bcrypt` + `/api/auth/login`, `req.session.userId` → `createCredentialUser`, `signIn()`, `req.currentUser`.
-- **09 user-management** — tworzenie userów przez `createCredentialUser` (albo plugin `admin` Better Auth — decyzja w specu Planu 09); blokowanie działa już per-request.
+- **09 user-management** — tworzenie userów przez `createCredentialUser` (albo plugin `admin` Better Auth — decyzja w specu Planu 09). **Wymaganie:** akcja „zablokuj” musi usuwać sesje użytkownika (`prisma.session.deleteMany({ where: { userId } })` lub `revokeUserSessions`). `requireAuth` odrzuca zablokowanych per-request, ale endpointy samego Better Auth (`get-session`, `change-password`, `update-user`) nadal akceptują istniejącą sesję — stary `/me` niszczył sesję zablokowanego (z code review PR #8).
 - **11 e2e** — logowanie przez `/api/auth/sign-in/email`.
 - **index.md** — wiersz „Auth” w Tech Stack.
 
@@ -171,3 +171,10 @@ Plany z maja zakładają stary auth — przed ich realizacją potrzebny świeży
 - uwzględniono pliki Planu 04 (`tickets.ts`, `tickets.test.ts`, `ticketService.test.ts`) oraz `db.test.ts`, `env.test.ts`, `test/setup.ts`,
 - dodano reset bazy przed migracją i strategię commitów zgodną z pre-commit `typecheck`,
 - obsługa błędów w middleware (`next(err)`), test blokady w trakcie sesji, test nieznanego emaila.
+
+**Po code review PR #8 (2026-10-28):**
+
+- migracja czyści stare sesje (`DELETE FROM "session"`) — inaczej `migrate deploy` padał na bazie z sesjami `connect-pg-simple`,
+- seed używa `ensureCredentialUser` — idempotentny niezależnie od wielkości liter w emailu i dopina konto `credential` userom bez niego (np. admin sprzed migracji),
+- `createCredentialUser` stosuje politykę haseł Better Auth (8–128 znaków, `PASSWORD_LENGTH`) i waliduje email,
+- dodano wymaganie dla Planu 09: blokowanie usuwa sesje.
