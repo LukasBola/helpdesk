@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client'
-import bcrypt from 'bcrypt'
-
-const prisma = new PrismaClient()
+import { prisma } from '../src/db'
+import { createCredentialUser } from '../src/lib/users'
 
 async function main() {
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@helpdesk.local'
@@ -13,16 +11,13 @@ async function main() {
     )
   }
 
-  await prisma.user.upsert({
-    where: { email },
-    update: {},
-    create: {
-      email,
-      name: 'Admin',
-      passwordHash: await bcrypt.hash(password, 10),
-      role: 'ADMIN',
-    },
-  })
+  const existing = await prisma.user.findUnique({ where: { email } })
+  if (existing) {
+    console.log(`Admin already exists: ${email}`)
+    return
+  }
+
+  await createCredentialUser({ email, password, name: 'Admin', role: 'ADMIN' })
   console.log(`Seeded admin: ${email}`)
 }
 
