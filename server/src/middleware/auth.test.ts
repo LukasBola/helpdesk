@@ -2,10 +2,17 @@ import type { NextFunction, Request, Response } from 'express'
 import type { MockInstance } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('../lib/auth', () => ({
+  auth: { api: { getSession: vi.fn() } },
+}))
+
+import { auth } from '../lib/auth'
 import { requireAuth, requireRole } from './auth'
 
-function mockReq(session: Partial<{ userId: string; role: string }> = {}): Request {
-  return { session } as unknown as Request
+const getSession = auth.api.getSession as unknown as MockInstance
+
+function mockReq(currentUser?: Request['currentUser']): Request {
+  return { headers: {}, currentUser } as unknown as Request
 }
 
 function mockRes(): { status: MockInstance; json: MockInstance } & Response {
@@ -15,6 +22,10 @@ function mockRes(): { status: MockInstance; json: MockInstance } & Response {
   return res as { status: MockInstance; json: MockInstance } & Response
 }
 
+function session(role: 'AGENT' | 'ADMIN', isBlocked = false) {
+  return { user: { id: 'u1', role, isBlocked } }
+}
+
 const next = vi.fn() as unknown as NextFunction
 
 beforeEach(() => {
@@ -22,51 +33,77 @@ beforeEach(() => {
 })
 
 describe('requireAuth', () => {
-  it('calls next when session has userId', () => {
-    const req = mockReq({ userId: 'u1', role: 'AGENT' })
-    const res = mockRes()
-    requireAuth(req, res, next)
-    expect(next).toHaveBeenCalled()
+  it('sets req.currentUser and calls next when session exists', async () => {
+    getSession.mockResolvedValue(session('AGENT'))
+    const req = mockReq()
+    await requireAuth(req, mockRes(), next)
+    expect(req.currentUser).toEqual({ id: 'u1', role: 'AGENT' })
+    expect(next).toHaveBeenCalledWith()
   })
 
-  it('returns 401 when no session', () => {
-    const req = mockReq()
+  it('returns 401 when no session', async () => {
+    getSession.mockResolvedValue(null)
     const res = mockRes()
-    requireAuth(req, res, next)
+    await requireAuth(mockReq(), res, next)
     expect(res.status).toHaveBeenCalledWith(401)
     expect(next).not.toHaveBeenCalled()
+  })
+
+  it('returns 401 when user is blocked', async () => {
+    getSession.mockResolvedValue(session('AGENT', true))
+    const res = mockRes()
+    await requireAuth(mockReq(), res, next)
+    expect(res.status).toHaveBeenCalledWith(401)
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it('forwards session lookup errors to next', async () => {
+    getSession.mockRejectedValue(new Error('db down'))
+    const res = mockRes()
+    await requireAuth(mockReq(), res, next)
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
+    expect(res.status).not.toHaveBeenCalled()
   })
 })
 
 describe('requireRole', () => {
-  it('calls next for matching role', () => {
-    const req = mockReq({ userId: 'u1', role: 'ADMIN' })
-    const res = mockRes()
-    requireRole('ADMIN')(req, res, next)
-    expect(next).toHaveBeenCalled()
+  it('calls next for matching role', async () => {
+    getSession.mockResolvedValue(session('ADMIN'))
+    await requireRole('ADMIN')(mockReq(), mockRes(), next)
+    expect(next).toHaveBeenCalledWith()
   })
 
-  it('returns 403 for wrong role', () => {
-    const req = mockReq({ userId: 'u1', role: 'AGENT' })
+  it('returns 403 for insufficient role', async () => {
+    getSession.mockResolvedValue(session('AGENT'))
     const res = mockRes()
-    requireRole('ADMIN')(req, res, next)
+    await requireRole('ADMIN')(mockReq(), res, next)
     expect(res.status).toHaveBeenCalledWith(403)
     expect(next).not.toHaveBeenCalled()
   })
 
-  it('allows ADMIN to pass AGENT role check', () => {
-    const req = mockReq({ userId: 'u1', role: 'ADMIN' })
-    const res = mockRes()
-    requireRole('AGENT')(req, res, next)
-    expect(next).toHaveBeenCalled()
-    expect(next).not.toHaveBeenCalledWith(expect.any(Error))
+  it('allows ADMIN to pass an AGENT role check', async () => {
+    getSession.mockResolvedValue(session('ADMIN'))
+    await requireRole('AGENT')(mockReq(), mockRes(), next)
+    expect(next).toHaveBeenCalledWith()
   })
 
-  it('returns 401 when no userId in session', () => {
-    const req = mockReq()
+  it('returns 401 when no session', async () => {
+    getSession.mockResolvedValue(null)
     const res = mockRes()
-    requireRole('ADMIN')(req, res, next)
+    await requireRole('ADMIN')(mockReq(), res, next)
     expect(res.status).toHaveBeenCalledWith(401)
     expect(next).not.toHaveBeenCalled()
+  })
+
+  it('reuses req.currentUser set by requireAuth without a second lookup', async () => {
+    await requireRole('ADMIN')(mockReq({ id: 'u1', role: 'ADMIN' }), mockRes(), next)
+    expect(getSession).not.toHaveBeenCalled()
+    expect(next).toHaveBeenCalledWith()
+  })
+
+  it('forwards session lookup errors to next', async () => {
+    getSession.mockRejectedValue(new Error('db down'))
+    await requireRole('ADMIN')(mockReq(), mockRes(), next)
+    expect(next).toHaveBeenCalledWith(expect.any(Error))
   })
 })

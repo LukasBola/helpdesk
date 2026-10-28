@@ -1,27 +1,21 @@
-import bcrypt from 'bcrypt'
 import request from 'supertest'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { app } from '../app'
 import { prisma } from '../db'
+import { createCredentialUser } from '../lib/users'
+import { signIn } from '../test/auth'
 
 let cookie: string
 let ticketId: string
 
 beforeAll(async () => {
-  await prisma.user.create({
-    data: {
-      email: 'agent-ticket@test.com',
-      name: 'Agent',
-      passwordHash: await bcrypt.hash('pass123', 10),
-      role: 'AGENT',
-    },
+  await createCredentialUser({
+    email: 'agent-ticket@test.com',
+    password: 'password123',
+    name: 'Agent',
   })
-
-  const login = await request(app)
-    .post('/api/auth/login')
-    .send({ email: 'agent-ticket@test.com', password: 'pass123' })
-  cookie = login.headers['set-cookie'][0]
+  cookie = await signIn('agent-ticket@test.com', 'password123')
 
   const ticket = await prisma.ticket.create({
     data: {
