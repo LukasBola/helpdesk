@@ -68,7 +68,9 @@ describe('parsePostmarkPayload', () => {
 // Integration: real DB via testcontainers (started in global setup)
 describe('ticket creation (integration)', () => {
   afterAll(async () => {
-    await prisma.ticket.deleteMany()
+    await prisma.ticket.deleteMany({
+      where: { messageId: { in: ['integration-1@test.com', 'dup-1@test.com'] } },
+    })
   })
 
   it('creates a ticket from a valid email payload', async () => {

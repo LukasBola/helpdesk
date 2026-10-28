@@ -15,7 +15,7 @@ const VALID_PAYLOAD = {
 }
 
 beforeAll(async () => {
-  await prisma.ticket.deleteMany()
+  await prisma.ticket.deleteMany({ where: { messageId: VALID_PAYLOAD.MessageID } })
   const queue = await getQueue()
   // pg-boss v12 requires explicit queue creation before send() or work()
   await queue.createQueue(EMAIL_JOB)
@@ -24,7 +24,7 @@ beforeAll(async () => {
 }, 15_000)
 
 afterAll(async () => {
-  await prisma.ticket.deleteMany()
+  await prisma.ticket.deleteMany({ where: { messageId: VALID_PAYLOAD.MessageID } })
   await stopQueue()
 }, 10_000)
 
