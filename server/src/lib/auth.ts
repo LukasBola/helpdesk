@@ -5,6 +5,8 @@ import { APIError } from 'better-auth/api'
 import { prisma } from '../db'
 import { env } from '../env'
 
+export const PASSWORD_LENGTH = { min: 8, max: 128 }
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   advanced: {
@@ -15,6 +17,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     disableSignUp: true,
+    minPasswordLength: PASSWORD_LENGTH.min,
+    maxPasswordLength: PASSWORD_LENGTH.max,
   },
   user: {
     additionalFields: {

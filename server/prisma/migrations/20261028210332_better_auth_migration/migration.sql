@@ -1,3 +1,6 @@
+-- Old connect-pg-simple sessions cannot be converted and the new columns are NOT NULL.
+DELETE FROM "session";
+
 -- DropIndex
 DROP INDEX "session_expire_idx";
 

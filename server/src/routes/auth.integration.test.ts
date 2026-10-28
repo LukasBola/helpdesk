@@ -29,6 +29,19 @@ describe('POST /api/auth/sign-in/email', () => {
     expect(res.headers['set-cookie']).toBeDefined()
   })
 
+  it('returns 400 and no cookie when the password is missing', async () => {
+    const res = await request(app).post('/api/auth/sign-in/email').send({ email: EMAIL })
+    expect(res.status).toBe(400)
+    expect(res.headers['set-cookie']).toBeUndefined()
+  })
+
+  it('returns 400 when the email is malformed', async () => {
+    const res = await request(app)
+      .post('/api/auth/sign-in/email')
+      .send({ email: 'not-an-email', password: PASSWORD })
+    expect(res.status).toBe(400)
+  })
+
   it('returns 401 on wrong password', async () => {
     const res = await request(app)
       .post('/api/auth/sign-in/email')

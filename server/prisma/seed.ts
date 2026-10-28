@@ -1,5 +1,5 @@
 import { prisma } from '../src/db'
-import { createCredentialUser } from '../src/lib/users'
+import { ensureCredentialUser } from '../src/lib/users'
 
 async function main() {
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@helpdesk.local'
@@ -11,14 +11,8 @@ async function main() {
     )
   }
 
-  const existing = await prisma.user.findUnique({ where: { email } })
-  if (existing) {
-    console.log(`Admin already exists: ${email}`)
-    return
-  }
-
-  await createCredentialUser({ email, password, name: 'Admin', role: 'ADMIN' })
-  console.log(`Seeded admin: ${email}`)
+  const result = await ensureCredentialUser({ email, password, name: 'Admin', role: 'ADMIN' })
+  console.log(`Admin ${email}: ${result}`)
 }
 
 void main().finally(() => prisma.$disconnect())
