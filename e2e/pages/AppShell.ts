@@ -39,8 +39,15 @@ export class AppShell {
     await expect(this.drawer).toBeVisible()
   }
 
-  async logout() {
+  async openUserMenu(): Promise<Locator> {
     await this.userMenuButton.click()
+    const menu = this.page.getByRole('menu')
+    await expect(menu).toBeVisible()
+    return menu
+  }
+
+  async logout() {
+    await this.openUserMenu()
     await this.page.getByRole('menuitem', { name: 'Wyloguj' }).click()
   }
 }

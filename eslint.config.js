@@ -24,7 +24,7 @@ export default tseslint.config(
           allowDefaultProject: [
             'server/vitest.config.ts',
             'server/prisma/seed.ts',
-            'server/prisma/seed-e2e.ts',
+            'server/prisma/e2e-fixtures.ts',
           ],
         },
         tsconfigRootDir: import.meta.dirname,

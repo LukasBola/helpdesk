@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "seed:e2e": "tsx --env-file=../.env prisma/seed-e2e.ts"
+    "e2e:fixtures": "tsx --env-file=../.env prisma/e2e-fixtures.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

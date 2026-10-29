@@ -23,9 +23,13 @@ export class LoginPage {
     await expect(this.submit).toBeVisible()
   }
 
-  async login(email: string, password: string) {
+  async fill(email: string, password: string) {
     await this.email.fill(email)
     await this.password.fill(password)
+  }
+
+  async login(email: string, password: string) {
+    await this.fill(email, password)
     await this.submit.click()
   }
 

@@ -6,7 +6,6 @@ const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:5173'
 
 // Firefox and WebKit are installed (`pnpm e2e:install`) but the suite runs on Chrome only.
 export default defineConfig({
-  testDir: './tests',
   outputDir: './test-results',
   globalSetup: './global-setup.ts',
   fullyParallel: true,
@@ -27,12 +26,20 @@ export default defineConfig({
   },
   projects: [
     // Logs in once per role through the LoginPage POM and saves the session cookies.
-    { name: 'setup', testMatch: /auth\.setup\.ts/, use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'setup',
+      testDir: './tests',
+      testMatch: /auth\.setup\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
     {
       name: 'chromium',
+      testDir: './tests',
       use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE.admin },
       dependencies: ['setup'],
     },
+    // Frontend ↔ backend contract: HTTP calls through the Vite proxy, no browser needed.
+    { name: 'api', testDir: './api', use: { extraHTTPHeaders: { Origin: BASE_URL } } },
   ],
   webServer: {
     command: 'pnpm dev',
