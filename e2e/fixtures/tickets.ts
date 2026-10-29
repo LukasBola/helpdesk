@@ -9,4 +9,5 @@ export const TICKETS = {
   patchInvalid: { subject: 'E2E Błędne dane', status: 'OPEN', priority: 'MEDIUM' },
 } as const
 
-export const E2E_SEARCH = 'E2E '
+// Every fixture's customer e-mail ends with this domain, which no real ticket uses.
+export const E2E_SEARCH = 'klient.example'

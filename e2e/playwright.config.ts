@@ -1,8 +1,17 @@
+import path from 'node:path'
+
 import { defineConfig, devices } from '@playwright/test'
 
 import { STORAGE_STATE } from './fixtures/users'
 
 const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:5173'
+
+// Same env as the dev server (e.g. POSTMARK_WEBHOOK_TOKEN for the webhook tests).
+try {
+  process.loadEnvFile(path.join(import.meta.dirname, '..', '.env'))
+} catch {
+  // No .env: tests that need a secret skip themselves.
+}
 
 // Firefox and WebKit are installed (`pnpm e2e:install`) but the suite runs on Chrome only.
 export default defineConfig({

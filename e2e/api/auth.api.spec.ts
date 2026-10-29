@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 import { newApiContext, signInAs } from '../fixtures/api'
+import { db } from '../fixtures/db'
 import { USERS } from '../fixtures/users'
 
 const SIGN_IN = '/api/auth/sign-in/email'
@@ -121,15 +122,17 @@ test.describe('API /api/auth: sesja', () => {
 
 test.describe('API /api/auth: zmiana konta', () => {
   test('A9 agent nie może nadać sobie roli ADMIN przez update-user', async () => {
-    const ctx = await signInAs('api')
-    await ctx.post('/api/auth/update-user', { data: { role: 'ADMIN' } })
+    const ctx = await signInAs('escalate')
+    const res = await ctx.post('/api/auth/update-user', { data: { role: 'ADMIN' } })
+    expect(res.status()).toBe(400)
     const session = await (await ctx.get('/api/auth/get-session')).json()
     expect(session.user.role).toBe('AGENT')
   })
 
-  test('A9 użytkownik nie może zmienić flagi isBlocked przez update-user', async () => {
-    const ctx = await signInAs('api')
-    await ctx.post('/api/auth/update-user', { data: { isBlocked: true } })
+  test('A9 użytkownik nie może ustawić sobie isBlocked przez update-user', async () => {
+    const ctx = await signInAs('escalate')
+    const res = await ctx.post('/api/auth/update-user', { data: { isBlocked: true } })
+    expect(res.status()).toBe(400)
     const session = await (await ctx.get('/api/auth/get-session')).json()
     expect(session.user.isBlocked).toBe(false)
   })
@@ -139,9 +142,118 @@ test.describe('API /api/auth: zmiana konta', () => {
     const res = await ctx.post('/api/auth/change-password', {
       data: { currentPassword: 'wrong-password-1', newPassword: 'new-password-123' },
     })
-    expect(res.status()).toBeGreaterThanOrEqual(400)
-    expect(res.status()).toBeLessThan(500)
+    expect(res.status()).toBe(400)
     // Old password still works.
     await signInAs('api')
+  })
+
+  test('A10 nowe hasło krótsze niż 8 znaków jest odrzucone', async () => {
+    const ctx = await signInAs('api')
+    const res = await ctx.post('/api/auth/change-password', {
+      data: { currentPassword: USERS.api.password, newPassword: 'short' },
+    })
+    expect(res.status()).toBe(400)
+    await signInAs('api')
+  })
+
+  test('A12 pusta lub bardzo długa nazwa użytkownika jest odrzucona', async () => {
+    const ctx = await signInAs('account')
+    for (const name of ['', '   ', 'x'.repeat(500)]) {
+      const res = await ctx.post('/api/auth/update-user', { data: { name } })
+      expect(res.status(), JSON.stringify(name.slice(0, 10))).toBe(400)
+    }
+    const session = await (await ctx.get('/api/auth/get-session')).json()
+    expect(session.user.name).toBe(USERS.account.name)
+  })
+})
+
+test.describe('API /api/auth: wyłączone i chronione endpointy', () => {
+  test('A11 usunięcie konta jest niedostępne', async () => {
+    const ctx = await signInAs('account')
+    const res = await ctx.post('/api/auth/delete-user', { data: {} })
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+    expect(res.status()).toBeLessThan(500)
+    await signInAs('account')
+  })
+
+  test('A11 zmiana e-maila jest niedostępna', async () => {
+    const ctx = await signInAs('account')
+    const viaChange = await ctx.post('/api/auth/change-email', {
+      data: { newEmail: 'changed@helpdesk.local' },
+    })
+    expect(viaChange.status()).toBe(400)
+    const viaUpdate = await ctx.post('/api/auth/update-user', {
+      data: { email: 'changed@helpdesk.local' },
+    })
+    expect(viaUpdate.status()).toBe(400)
+    const session = await (await ctx.get('/api/auth/get-session')).json()
+    expect(session.user.email).toBe(USERS.account.email)
+  })
+
+  test('A11 reset hasła: identyczna odpowiedź dla znanego i nieznanego e-maila', async () => {
+    const ctx = await newApiContext()
+    const known = await ctx.post('/api/auth/request-password-reset', {
+      data: { email: USERS.account.email, redirectTo: '/' },
+    })
+    const unknown = await ctx.post('/api/auth/request-password-reset', {
+      data: { email: 'nobody@helpdesk.local', redirectTo: '/' },
+    })
+    expect(known.status()).toBe(unknown.status())
+    expect(await known.json()).toEqual(await unknown.json())
+  })
+
+  // Tokens are returned by design (revoke-session takes one); they can't be turned into a
+  // cookie without the server's HMAC secret. What matters is that only own sessions are listed.
+  test('A11 lista sesji zawiera tylko sesje zalogowanego użytkownika', async () => {
+    const ctx = await signInAs('account')
+    await signInAs('agent')
+    const me = (await (await ctx.get('/api/auth/get-session')).json()).user.id as string
+    const res = await ctx.get('/api/auth/list-sessions')
+    expect(res.status()).toBe(200)
+    const sessions = (await res.json()) as { userId: string }[]
+    expect(sessions.length).toBeGreaterThan(0)
+    expect(sessions.every(session => session.userId === me)).toBe(true)
+  })
+
+  test('A13 wylogowanie z obcego originu jest odrzucone (CSRF)', async () => {
+    const ctx = await signInAs('account')
+    const res = await ctx.post('/api/auth/sign-out', {
+      headers: { Origin: 'http://evil.example' },
+      data: {},
+    })
+    expect(res.status()).toBe(403)
+    expect((await ctx.get('/api/tickets')).status()).toBe(200)
+  })
+
+  test('A13 update-user z obcego originu jest odrzucony (CSRF)', async () => {
+    const ctx = await signInAs('account')
+    const res = await ctx.post('/api/auth/update-user', {
+      headers: { Origin: 'http://evil.example' },
+      data: { name: 'Hacked' },
+    })
+    expect(res.status()).toBe(403)
+  })
+})
+
+test.describe('API /api/auth: zablokowany użytkownik z aktywną sesją', () => {
+  test.beforeEach(() => db.unblock(USERS.selfUnblock.email))
+  test.afterEach(() => db.unblock(USERS.selfUnblock.email))
+
+  test('A14 nie może się odblokować przez update-user', async () => {
+    const ctx = await signInAs('selfUnblock')
+    db.block(USERS.selfUnblock.email)
+    await ctx.post('/api/auth/update-user', { data: { isBlocked: false } })
+    const session = await (await ctx.get('/api/auth/get-session')).json()
+    expect(session?.user?.isBlocked ?? true).toBe(true)
+    expect((await ctx.get('/api/tickets')).status()).toBe(401)
+  })
+
+  // Known gap, owned by Plan 09: blocking must revoke sessions. Until then Better Auth's own
+  // endpoints still accept a blocked user's session.
+  test.fixme('A14 sesja zablokowanego nie działa na endpointach Better Auth', async () => {
+    const ctx = await signInAs('selfUnblock')
+    db.block(USERS.selfUnblock.email)
+    expect(await (await ctx.get('/api/auth/get-session')).json()).toBeNull()
+    expect((await ctx.get('/api/auth/list-sessions')).status()).toBe(401)
   })
 })

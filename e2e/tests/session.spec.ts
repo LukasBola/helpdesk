@@ -123,8 +123,8 @@ test.describe('Sesja: logowanie i wylogowanie', () => {
 
 test.describe('Sesja: blokada konta w trakcie pracy', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
-  test.describe.configure({ mode: 'serial' })
-  test.afterAll(() => db.unblock(USERS.blocked.email))
+  test.beforeEach(() => db.unblock(USERS.blocked.email))
+  test.afterEach(() => db.unblock(USERS.blocked.email))
 
   test('U9 zablokowany użytkownik widzi logowanie bez pętli i nie może się zalogować', async ({
     page,
@@ -136,14 +136,20 @@ test.describe('Sesja: blokada konta w trakcie pracy', () => {
     await shell.expectSignedInAs(USERS.blocked.firstName)
 
     db.block(USERS.blocked.email)
+    // Record every URL from the reload on, so a /login ↔ /tickets loop can't go unseen.
+    const urls: string[] = []
+    page.on('framenavigated', frame => {
+      if (frame === page.mainFrame()) urls.push(new URL(frame.url()).pathname)
+    })
     await page.reload()
 
     await loginPage.expectVisible()
-    // Stays on /login: no redirect loop between /login and /tickets.
-    const navigations: string[] = []
-    page.on('framenavigated', frame => navigations.push(frame.url()))
-    await page.waitForTimeout(1500)
-    expect(navigations).toEqual([])
+    await page.waitForLoadState('networkidle')
+    // A loop would bounce back to /tickets after reaching /login. (React StrictMode in dev may
+    // report the /login redirect twice; that is not a loop.)
+    const afterLogin = urls.slice(urls.indexOf('/login'))
+    expect(afterLogin.length).toBeGreaterThan(0)
+    expect(afterLogin.every(url => url === '/login')).toBe(true)
 
     await loginPage.login(USERS.blocked.email, USERS.blocked.password)
     await loginPage.expectError('Nieprawidłowy e-mail lub hasło')

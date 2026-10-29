@@ -80,3 +80,35 @@ The e2e helper `e2e/fixtures/db.ts` wraps these commands with `execSync`.
 2. Run. Triage every failure: is it a **test bug** (fix the test) or a **product bug**?
 3. For each product bug: write a failing server or client unit test, fix it, and keep the e2e case as a regression test.
 4. Get a fresh-eyes review of the suite (gaps, flakiness, wrong assertions), apply the findings, and run everything again.
+
+## Outcome (2026-10-29)
+
+119 tests (UI 47 + API 72): 117 pass, 2 skipped on purpose. The suite passed 3× with `--repeat-each=3` (347 runs, no flakes).
+
+Real bugs found and fixed (each with a server/client unit test that failed first):
+
+| Bug                                                                      | Found by       | Fix                                          |
+| ------------------------------------------------------------------------ | -------------- | -------------------------------------------- |
+| Offset pagination repeated or skipped tickets when `orderBy` values tied | T3             | `id` as a tie-breaker                        |
+| PATCH with a valid cuid of a non-existent user → 500 (FK)                | T8             | 422 `Unknown assignee`                       |
+| Malformed JSON body → 500 (any route, even unauthenticated)              | T9             | 400 `Invalid JSON body`                      |
+| Body > 100 kB → 500; large Postmark e-mails would fail                   | review → T9/M4 | 413; webhook limit 10 MB                     |
+| `%` / `_` in search acted as SQL wildcards                               | review → T14   | escaped                                      |
+| Tickets could be assigned to a blocked user                              | review → T8    | 422 `Assignee is blocked`                    |
+| No CSRF origin check outside `/api/auth`                                 | review → T13   | 403 for untrusted `Origin` on non-GET `/api` |
+| Unknown `/api/*` returned Express HTML 404                               | review → M3    | JSON 404                                     |
+| `update-user` accepted an empty or 500-char name                         | A12            | trimmed, 1–100 chars                         |
+| Drawer close button was 16 px (spec: ≥ 44 px)                            | U11            | 44 px target                                 |
+
+Not bugs (decided): `list-sessions` returns session tokens. Better Auth needs them for `revoke-session`, and they can't be turned into a cookie without the HMAC secret. In dev, React StrictMode reports the `/login` redirect twice.
+
+Skipped on purpose:
+
+- A14 (`test.fixme`): a blocked user's live session still works on Better Auth's own endpoints. Owned by Plan 09 (revoke sessions on block).
+- M2: needs `POSTMARK_WEBHOOK_TOKEN` in `.env`.
+
+Known gaps:
+
+- Better Auth rate limiting is on only in production, so 429 is tested with a mock.
+- The 401 interceptor has no UI consumer until Plan 06.
+- Two runs against the same dev DB would interfere, because the seed recreates fixtures.

@@ -33,6 +33,27 @@ export const USERS = {
     name: 'Olek Api',
     firstName: 'Olek',
   },
+  // Used only by the privilege-escalation test.
+  escalate: {
+    email: 'e2e-escalate@helpdesk.local',
+    password: PASSWORD,
+    name: 'Ela Eskalacja',
+    firstName: 'Ela',
+  },
+  // Blocked by its own test to try unblocking itself.
+  selfUnblock: {
+    email: 'e2e-selfunblock@helpdesk.local',
+    password: PASSWORD,
+    name: 'Sara Samoodblok',
+    firstName: 'Sara',
+  },
+  // Used by account-endpoint tests (name changes, session listing).
+  account: {
+    email: 'e2e-account@helpdesk.local',
+    password: PASSWORD,
+    name: 'Konrad Konto',
+    firstName: 'Konrad',
+  },
   // Blocked by the seed and never unblocked.
   locked: {
     email: 'e2e-locked@helpdesk.local',

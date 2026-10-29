@@ -8,43 +8,51 @@ test.use({ storageState: { cookies: [], origins: [] } })
 
 const SIGN_IN = '**/api/auth/sign-in/email'
 
-function countSignInRequests(page: Page): () => number {
+// Returns a check that waits briefly (a request could be sent asynchronously) and then
+// asserts that no sign-in request went out.
+function expectNoSignInRequest(page: Page): () => Promise<void> {
   let count = 0
   page.on('request', req => {
     if (req.url().includes('/api/auth/sign-in/email')) count++
   })
-  return () => count
+  return async () => {
+    await page.waitForLoadState('networkidle')
+    expect(count).toBe(0)
+  }
 }
 
 test.describe('Formularz logowania: walidacja', () => {
   test('U1 pusty formularz nie wysyła żądania', async ({ page }) => {
-    const requests = countSignInRequests(page)
+    const noRequest = expectNoSignInRequest(page)
     const loginPage = new LoginPage(page)
     await loginPage.goto()
     await loginPage.submit.click()
     expect(await loginPage.email.evaluate((el: HTMLInputElement) => el.validity.valueMissing)).toBe(
       true,
     )
-    expect(requests()).toBe(0)
+    await noRequest()
   })
 
   test('U1 niepoprawny format e-maila nie wysyła żądania', async ({ page }) => {
-    const requests = countSignInRequests(page)
+    const noRequest = expectNoSignInRequest(page)
     const loginPage = new LoginPage(page)
     await loginPage.goto()
     await loginPage.login('to-nie-jest-email', 'password-123')
     expect(await loginPage.email.evaluate((el: HTMLInputElement) => el.validity.typeMismatch)).toBe(
       true,
     )
-    expect(requests()).toBe(0)
+    await noRequest()
   })
 
   test('U1 brak hasła nie wysyła żądania', async ({ page }) => {
-    const requests = countSignInRequests(page)
+    const noRequest = expectNoSignInRequest(page)
     const loginPage = new LoginPage(page)
     await loginPage.goto()
     await loginPage.login(USERS.agent.email, '')
-    expect(requests()).toBe(0)
+    expect(
+      await loginPage.password.evaluate((el: HTMLInputElement) => el.validity.valueMissing),
+    ).toBe(true)
+    await noRequest()
   })
 
   test('U2 Enter w polu hasła wysyła formularz', async ({ page }) => {
@@ -113,7 +121,29 @@ test.describe('Formularz logowania: odpowiedzi serwera', () => {
     await loginPage.goto()
     await loginPage.login(USERS.agent.email, 'wrong-password-1')
     await loginPage.expectError('Nieprawidłowy e-mail lub hasło')
+
+    // A second failure with a different cause replaces the message; a new attempt clears it.
+    await page.route(SIGN_IN, route => route.fulfill({ status: 429, json: {} }), { times: 1 })
     await loginPage.login(USERS.agent.email, USERS.agent.password)
+    await loginPage.expectError('Za dużo prób. Spróbuj za chwilę.')
+
+    await loginPage.login(USERS.agent.email, USERS.agent.password)
+    await expect(loginPage.error).toBeHidden()
+    await new AppShell(page).expectSignedInAs(USERS.agent.firstName)
+  })
+
+  test('U3 podczas logowania widać wskaźnik ładowania', async ({ page }) => {
+    let release: () => void = () => undefined
+    const held = new Promise<void>(resolve => (release = resolve))
+    await page.route(SIGN_IN, async route => {
+      await held
+      await route.continue()
+    })
+    const loginPage = new LoginPage(page)
+    await loginPage.goto()
+    await loginPage.login(USERS.agent.email, USERS.agent.password)
+    await expect(loginPage.submit.locator('svg.animate-spin')).toBeVisible()
+    release()
     await new AppShell(page).expectSignedInAs(USERS.agent.firstName)
   })
 })
