@@ -1,0 +1,89 @@
+import { Loader2 } from 'lucide-react'
+import { type FormEvent, useState } from 'react'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+
+import { FullScreenLoader } from '@/components/FullScreenLoader'
+import { Logo } from '@/components/Logo'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { signIn, useSession } from '@/lib/auth-client'
+import { loginErrorMessage } from '@/lib/login-error'
+import { DEFAULT_PATH, safeRedirectPath } from '@/lib/redirect'
+import { getActiveUser } from '@/lib/session'
+
+export function LoginPage() {
+  const { data, isPending } = useSession()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  if (isPending) return <FullScreenLoader />
+  if (getActiveUser(data)) return <Navigate to={DEFAULT_PATH} replace />
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError(null)
+    setSubmitting(true)
+    try {
+      const result = await signIn.email({ email, password })
+      if (result.error) {
+        setError(loginErrorMessage(result.error.status))
+        return
+      }
+      const from = (location.state as { from?: unknown } | null)?.from
+      navigate(safeRedirectPath(from), { replace: true })
+    } catch {
+      setError(loginErrorMessage(undefined))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-app px-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-card sm:p-8">
+        <Logo className="text-lg" />
+        <p className="mb-6 mt-1 text-sm text-muted-foreground">Zaloguj się do panelu agenta</p>
+        <form onSubmit={e => void handleSubmit(e)} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="email">E-mail</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              required
+              className="min-h-11"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Hasło</Label>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              className="min-h-11"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+          </div>
+          {error && (
+            <div role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">
+              {error}
+            </div>
+          )}
+          <Button type="submit" className="min-h-11 w-full font-semibold" disabled={submitting}>
+            {submitting && <Loader2 className="animate-spin" aria-hidden />}
+            Zaloguj się
+          </Button>
+        </form>
+      </div>
+    </main>
+  )
+}
