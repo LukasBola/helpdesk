@@ -85,6 +85,14 @@ describe('LoginPage', () => {
     expect(await screen.findByRole('heading', { name: 'Baza wiedzy' })).toBeInTheDocument()
   })
 
+  it('navigates to the saved `from` when the session arrives after sign-in', async () => {
+    signInEmail.mockResolvedValue({ data: {}, error: null } as never)
+    renderRoute('/login', { state: { from: '/knowledge-base' } })
+    await submit()
+    mockSession({})
+    expect(await screen.findByRole('heading', { name: 'Baza wiedzy' })).toBeInTheDocument()
+  })
+
   it('ignores an unsafe `from`', async () => {
     succeed()
     renderRoute('/login', { state: { from: '//evil.com' } })

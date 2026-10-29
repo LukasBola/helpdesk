@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
+import { useSyncExternalStore } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 
@@ -8,6 +9,25 @@ import { type SessionUser, useSession } from '@/lib/auth-client'
 
 // Test files must mock the auth client themselves, e.g.:
 // vi.mock('@/lib/auth-client', () => ({ useSession: vi.fn(), signIn: { email: vi.fn() }, signOut: vi.fn() }))
+
+// The mocked useSession reads from a tiny store, so components re-render when a test
+// changes the session, like the real Better Auth store does after sign-in.
+type SessionState = ReturnType<typeof useSession>
+let sessionState: SessionState
+const listeners = new Set<() => void>()
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+function setSessionState(next: SessionState) {
+  sessionState = next
+  vi.mocked(useSession).mockImplementation(() =>
+    useSyncExternalStore(subscribe, () => sessionState),
+  )
+  act(() => listeners.forEach(listener => listener()))
+}
 
 export function mockSession(
   user: Partial<SessionUser> | null,
@@ -36,12 +56,12 @@ export function mockSession(
         },
       }
     : null
-  vi.mocked(useSession).mockReturnValue({
+  setSessionState({
     data,
     isPending: opts.isPending ?? false,
     error: null,
     refetch: vi.fn(),
-  } as unknown as ReturnType<typeof useSession>)
+  } as unknown as SessionState)
 }
 
 export function renderRoute(path: string, opts: { state?: unknown } = {}) {

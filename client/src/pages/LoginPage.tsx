@@ -1,6 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 
 import { FullScreenLoader } from '@/components/FullScreenLoader'
 import { Logo } from '@/components/Logo'
@@ -9,12 +9,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { signIn, useSession } from '@/lib/auth-client'
 import { loginErrorMessage } from '@/lib/login-error'
-import { DEFAULT_PATH, safeRedirectPath } from '@/lib/redirect'
+import { safeRedirectPath } from '@/lib/redirect'
 import { getActiveUser } from '@/lib/session'
 
 export function LoginPage() {
   const { data, isPending } = useSession()
-  const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,7 +21,12 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
 
   if (isPending) return <FullScreenLoader />
-  if (getActiveUser(data)) return <Navigate to={DEFAULT_PATH} replace />
+  // Also the success path: signIn updates the session store asynchronously, and navigating
+  // before it does would bounce off ProtectedRoute and lose `from`.
+  if (getActiveUser(data)) {
+    const from = (location.state as { from?: unknown } | null)?.from
+    return <Navigate to={safeRedirectPath(from)} replace />
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -30,12 +34,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       const result = await signIn.email({ email, password })
-      if (result.error) {
-        setError(loginErrorMessage(result.error.status))
-        return
-      }
-      const from = (location.state as { from?: unknown } | null)?.from
-      navigate(safeRedirectPath(from), { replace: true })
+      if (result.error) setError(loginErrorMessage(result.error.status))
     } catch {
       setError(loginErrorMessage(undefined))
     } finally {
