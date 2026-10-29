@@ -1,7 +1,8 @@
 import { BookOpen, Ticket, UserCheck, Users } from 'lucide-react'
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { AppShell } from '@/components/layout/AppShell'
 import { DEFAULT_PATH } from '@/lib/redirect'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -16,7 +17,7 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<Navigate to={DEFAULT_PATH} replace />} />
       <Route element={<ProtectedRoute />}>
-        <Route element={<Outlet />}>
+        <Route element={<AppShell />}>
           <Route path="/tickets" element={<PlaceholderPage title="Tickety" icon={Ticket} />} />
           <Route path="/tickets/mine" element={<PlaceholderPage title="Moje" icon={UserCheck} />} />
           <Route
