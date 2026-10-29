@@ -1,6 +1,6 @@
 import axios, { isAxiosError } from 'axios'
 
-import { signOut } from './auth-client'
+import { refreshSession, signOut } from './auth-client'
 import { queryClient } from './queryClient'
 
 export const api = axios.create({ baseURL: '/api', withCredentials: true })
@@ -10,8 +10,10 @@ let signingOut: Promise<void> | null = null
 // Several queries can fail with 401 at once; sign out only once. Removing the session
 // (also for a blocked user) lets ProtectedRoute redirect to /login.
 function handleUnauthorized(): Promise<void> {
+  // Keep the guard until the session store is empty: 401s arriving in between belong
+  // to the same sign-out.
   signingOut ??= signOut()
-    .then(() => undefined)
+    .then(() => refreshSession())
     .finally(() => {
       queryClient.clear()
       signingOut = null

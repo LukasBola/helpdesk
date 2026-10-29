@@ -18,3 +18,9 @@ export const { useSession, signIn, signOut } = authClient
 
 export type Session = typeof authClient.$Infer.Session
 export type SessionUser = Session['user']
+
+// signOut() resolves before the session store changes (Better Auth refetches the session
+// shortly after). Await this to know the store no longer holds the signed-out user.
+export async function refreshSession(): Promise<void> {
+  await authClient.$store.atoms.session.get().refetch()
+}

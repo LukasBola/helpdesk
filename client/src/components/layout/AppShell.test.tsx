@@ -2,18 +2,20 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { signOut } from '@/lib/auth-client'
+import { refreshSession, signOut } from '@/lib/auth-client'
 import { mockSession, renderRoute } from '@/test/render'
 
 vi.mock('@/lib/auth-client', () => ({
   useSession: vi.fn(),
   signIn: { email: vi.fn() },
   signOut: vi.fn(),
+  refreshSession: vi.fn(),
 }))
 
 describe('AppShell', () => {
   beforeEach(() => {
     vi.mocked(signOut).mockReset()
+    vi.mocked(refreshSession).mockReset()
   })
 
   it('greets the user by first name', () => {
@@ -37,17 +39,18 @@ describe('AppShell', () => {
   })
 
   it('logs out via the avatar menu', async () => {
-    vi.mocked(signOut).mockImplementation((async () => {
-      mockSession(null)
-      return { data: { success: true }, error: null }
-    }) as never)
+    // Like Better Auth: signOut resolves before the session store changes;
+    // the store is cleared only by the following session refetch.
+    vi.mocked(signOut).mockResolvedValue({ data: { success: true }, error: null } as never)
+    vi.mocked(refreshSession).mockImplementation(async () => mockSession(null))
     mockSession({})
     renderRoute('/tickets')
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'Menu użytkownika' }))
     await user.click(await screen.findByRole('menuitem', { name: 'Wyloguj' }))
-    expect(signOut).toHaveBeenCalledTimes(1)
     expect(await screen.findByRole('button', { name: 'Zaloguj się' })).toBeInTheDocument()
+    expect(signOut).toHaveBeenCalledTimes(1)
+    expect(refreshSession).toHaveBeenCalledTimes(1)
   })
 
   it('opens the mobile drawer with navigation', async () => {

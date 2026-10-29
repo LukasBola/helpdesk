@@ -2,10 +2,10 @@ import { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from './api'
-import { signOut } from './auth-client'
+import { refreshSession, signOut } from './auth-client'
 import { queryClient } from './queryClient'
 
-vi.mock('./auth-client', () => ({ signOut: vi.fn() }))
+vi.mock('./auth-client', () => ({ signOut: vi.fn(), refreshSession: vi.fn() }))
 
 function fail401(config: InternalAxiosRequestConfig) {
   const response = { status: 401, config } as AxiosResponse
@@ -21,6 +21,7 @@ async function failTickets(times: number) {
 describe('api 401 interceptor', () => {
   beforeEach(() => {
     vi.mocked(signOut).mockResolvedValue({ data: { success: true }, error: null })
+    vi.mocked(refreshSession).mockResolvedValue()
     vi.spyOn(queryClient, 'clear')
   })
 
@@ -51,5 +52,22 @@ describe('api 401 interceptor', () => {
     await failTickets(2)
     await vi.waitFor(() => expect(queryClient.clear).toHaveBeenCalledTimes(2))
     expect(signOut).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the guard until the session store is cleared', async () => {
+    let finishRefresh: () => void = () => undefined
+    vi.mocked(refreshSession).mockReturnValue(
+      new Promise<void>(resolve => {
+        finishRefresh = resolve
+      }),
+    )
+    await failTickets(1)
+    await vi.waitFor(() => expect(refreshSession).toHaveBeenCalled())
+    // signOut has resolved, but the store still holds the user: a late 401 must not sign out again
+    await failTickets(1)
+    expect(signOut).toHaveBeenCalledTimes(1)
+    expect(queryClient.clear).not.toHaveBeenCalled()
+    finishRefresh()
+    await vi.waitFor(() => expect(queryClient.clear).toHaveBeenCalledTimes(1))
   })
 })

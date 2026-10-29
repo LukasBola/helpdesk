@@ -9,6 +9,7 @@ vi.mock('@/lib/auth-client', () => ({
   useSession: vi.fn(),
   signIn: { email: vi.fn() },
   signOut: vi.fn(),
+  refreshSession: vi.fn(),
 }))
 
 const signInEmail = vi.mocked(signIn.email)
