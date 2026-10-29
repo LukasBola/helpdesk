@@ -112,6 +112,20 @@ pnpm --filter server test:watch
 
 Server integration tests spin up a real PostgreSQL instance via testcontainers — Docker must be running.
 
+### End-to-end (Playwright)
+
+The suite in `e2e/` runs against the real app (`pnpm dev`, started automatically if not running) and the local database (`docker compose up -d`). Global setup seeds two users, `e2e-admin@helpdesk.local` and `e2e-agent@helpdesk.local` (password `e2e-password-123`, override with `E2E_PASSWORD`).
+
+```bash
+pnpm e2e:install   # one-time: download Chromium, Firefox and WebKit
+pnpm e2e           # headless, Chrome only
+pnpm e2e:headed    # watch the browser (slowed down by E2E_SLOWMO=400 ms)
+pnpm e2e:ui        # Playwright UI mode
+pnpm e2e:report    # open the last HTML report
+```
+
+Structure: `e2e/pages/` holds the page objects (`LoginPage`, `AppShell`). `e2e/tests/auth.setup.ts` logs in once per role and saves the session in `e2e/.auth/`. Reporters: list (console), HTML (`e2e/playwright-report/`), JUnit (`e2e/test-results/junit.xml`).
+
 ## Code Quality
 
 ```bash

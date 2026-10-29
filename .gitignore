@@ -61,3 +61,6 @@ Thumbs.db
 
 # Brainstorming mockups
 .superpowers/
+
+# Playwright auth state
+e2e/.auth/
