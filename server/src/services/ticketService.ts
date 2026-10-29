@@ -34,7 +34,11 @@ export async function listTickets(opts: ListOptions) {
   const [tickets, total] = await prisma.$transaction([
     prisma.ticket.findMany({
       where,
-      orderBy: { [opts.orderBy ?? 'createdAt']: opts.order ?? 'desc' },
+      // id breaks ties, so offset pagination never repeats or skips rows.
+      orderBy: [
+        { [opts.orderBy ?? 'createdAt']: opts.order ?? 'desc' },
+        { id: opts.order ?? 'desc' },
+      ],
       skip,
       take: limit,
       include: { assignee: { select: { id: true, name: true, email: true } } },
@@ -62,6 +66,12 @@ export async function findTicketById(id: string) {
   })
 }
 
+export class UnknownAssigneeError extends Error {
+  constructor() {
+    super('Unknown assignee')
+  }
+}
+
 interface UpdateFields {
   status?: TicketStatus
   priority?: TicketPriority
@@ -72,6 +82,11 @@ export async function updateTicket(id: string, fields: UpdateFields, actorId: st
   return prisma.$transaction(async tx => {
     const current = await tx.ticket.findUnique({ where: { id } })
     if (!current) return null
+
+    if (fields.assigneeId) {
+      const assignee = await tx.user.findUnique({ where: { id: fields.assigneeId } })
+      if (!assignee) throw new UnknownAssigneeError()
+    }
 
     const historyEntries: Prisma.TicketHistoryCreateManyInput[] = []
 

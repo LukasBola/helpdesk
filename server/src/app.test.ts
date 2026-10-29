@@ -10,3 +10,14 @@ describe('GET /health', () => {
     expect(res.body).toEqual({ status: 'ok' })
   })
 })
+
+describe('malformed JSON body', () => {
+  it('returns 400 instead of 500 before any route runs', async () => {
+    const res = await request(app)
+      .post('/api/webhooks/postmark')
+      .set('Content-Type', 'application/json')
+      .send('{"MessageID":')
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ error: 'Invalid JSON body' })
+  })
+})

@@ -46,6 +46,51 @@ describe('listTickets', () => {
   })
 })
 
+describe('listTickets pagination', () => {
+  const PREFIX = 'svc-page-'
+  const SAME_TIME = new Date('2026-01-01T00:00:00Z')
+
+  beforeAll(async () => {
+    await prisma.ticket.createMany({
+      data: Array.from({ length: 6 }, (_, i) => ({
+        messageId: `${PREFIX}${i}@test.com`,
+        customerEmail: 'page@test.com',
+        subject: `Pagination ${i}`,
+        body: 'body',
+        priority: 'MEDIUM' as const,
+        createdAt: SAME_TIME,
+      })),
+    })
+  })
+
+  afterAll(async () => {
+    await prisma.ticket.deleteMany({ where: { messageId: { startsWith: PREFIX } } })
+  })
+
+  it.each(['asc', 'desc'] as const)(
+    'breaks ties by id (%s) so the order is total and stable',
+    async order => {
+      const { tickets } = await listTickets({ search: 'page@test.com', order, limit: 6 })
+      const ids = tickets.map(t => t.id)
+      const sorted = [...ids].sort()
+      expect(ids).toEqual(order === 'asc' ? sorted : sorted.reverse())
+    },
+  )
+
+  it.each(['createdAt', 'priority'] as const)(
+    'returns every ticket exactly once across pages when %s values tie',
+    async orderBy => {
+      const ids: string[] = []
+      for (const page of [1, 2, 3]) {
+        const { tickets } = await listTickets({ search: 'page@test.com', orderBy, limit: 2, page })
+        ids.push(...tickets.map(t => t.id))
+      }
+      expect(ids).toHaveLength(6)
+      expect(new Set(ids).size).toBe(6)
+    },
+  )
+})
+
 describe('findTicketById', () => {
   it('returns ticket with history', async () => {
     const ticket = await findTicketById(ticketId)

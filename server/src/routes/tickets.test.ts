@@ -101,4 +101,23 @@ describe('PATCH /api/tickets/:id', () => {
       .send({ assigneeId: 'not-a-valid-id' })
     expect(res.status).toBe(422)
   })
+
+  it('returns 422 when assigneeId is a valid cuid of a non-existent user', async () => {
+    const res = await request(app)
+      .patch(`/api/tickets/${ticketId}`)
+      .set('Cookie', cookie)
+      .send({ assigneeId: 'cjld2cjxh0000qzrmn831i7rn' })
+    expect(res.status).toBe(422)
+    expect(res.body).toEqual({ error: 'Unknown assignee' })
+  })
+
+  it('returns 400 for a malformed JSON body', async () => {
+    const res = await request(app)
+      .patch(`/api/tickets/${ticketId}`)
+      .set('Cookie', cookie)
+      .set('Content-Type', 'application/json')
+      .send('{"status":')
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ error: 'Invalid JSON body' })
+  })
 })
