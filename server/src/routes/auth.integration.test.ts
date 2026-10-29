@@ -107,3 +107,27 @@ describe('blocking a signed-in user', () => {
     }
   })
 })
+
+describe('POST /api/auth/update-user', () => {
+  it.each(['', '   ', 'x'.repeat(101)])('rejects an invalid name %#', async name => {
+    const cookie = await signIn(EMAIL, PASSWORD)
+    const res = await request(app)
+      .post('/api/auth/update-user')
+      .set('Cookie', cookie)
+      .send({ name })
+    expect(res.status).toBe(400)
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: EMAIL } })
+    expect(user.name).toBe('Auth HTTP')
+  })
+
+  it('trims and accepts a valid name', async () => {
+    const cookie = await signIn(EMAIL, PASSWORD)
+    const res = await request(app)
+      .post('/api/auth/update-user')
+      .set('Cookie', cookie)
+      .send({ name: '  Auth HTTP  ' })
+    expect(res.status).toBe(200)
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: EMAIL } })
+    expect(user.name).toBe('Auth HTTP')
+  })
+})

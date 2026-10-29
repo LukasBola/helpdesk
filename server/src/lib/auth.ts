@@ -1,11 +1,12 @@
 import { BASE_ERROR_CODES, betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
-import { APIError } from 'better-auth/api'
+import { APIError, createAuthMiddleware } from 'better-auth/api'
 
 import { prisma } from '../db'
 import { env } from '../env'
 
 export const PASSWORD_LENGTH = { min: 8, max: 128 }
+export const NAME_MAX_LENGTH = 100
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
@@ -53,6 +54,17 @@ export const auth = betterAuth({
         },
       },
     },
+  },
+  hooks: {
+    // Better Auth doesn't validate the name; it's shown to other agents (history, avatar).
+    before: createAuthMiddleware(async ctx => {
+      if (ctx.path !== '/update-user' || !ctx.body || !('name' in ctx.body)) return
+      const name = typeof ctx.body.name === 'string' ? ctx.body.name.trim() : ''
+      if (!name || name.length > NAME_MAX_LENGTH) {
+        throw new APIError('BAD_REQUEST', { message: 'Invalid name' })
+      }
+      return { context: { ...ctx, body: { ...ctx.body, name } } }
+    }),
   },
   trustedOrigins: [env.CLIENT_URL],
   secret: env.BETTER_AUTH_SECRET,
