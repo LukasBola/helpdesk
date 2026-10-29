@@ -2,14 +2,22 @@ import type { NextFunction, Request, Response } from 'express'
 
 import { logger } from '../lib/logger'
 
-// Set by express.json() (body-parser) when the request body isn't valid JSON.
-function isJsonParseError(err: Error): boolean {
-  return 'type' in err && err.type === 'entity.parse.failed'
+// express.json() (body-parser) reports client errors as http-errors with a `type`.
+const BODY_PARSER_ERRORS: Record<string, { status: number; error: string }> = {
+  'entity.parse.failed': { status: 400, error: 'Invalid JSON body' },
+  'entity.too.large': { status: 413, error: 'Request body too large' },
+  'charset.unsupported': { status: 415, error: 'Unsupported charset' },
+  'encoding.unsupported': { status: 415, error: 'Unsupported content encoding' },
+}
+
+function bodyParserError(err: Error) {
+  return 'type' in err && typeof err.type === 'string' ? BODY_PARSER_ERRORS[err.type] : undefined
 }
 
 export function errorHandler(err: Error, _req: Request, res: Response, next: NextFunction) {
-  if (isJsonParseError(err) && !res.headersSent) {
-    res.status(400).json({ error: 'Invalid JSON body' })
+  const clientError = bodyParserError(err)
+  if (clientError && !res.headersSent) {
+    res.status(clientError.status).json({ error: clientError.error })
     return
   }
   logger.error({ err }, 'Unhandled error')

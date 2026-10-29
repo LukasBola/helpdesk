@@ -5,8 +5,8 @@ import { z } from 'zod'
 import { requireAuth } from '../middleware/auth'
 import {
   findTicketById,
+  InvalidAssigneeError,
   listTickets,
-  UnknownAssigneeError,
   updateTicket,
 } from '../services/ticketService'
 
@@ -73,7 +73,7 @@ router.patch('/:id', async (req, res, next: NextFunction) => {
     }
     res.json(ticket)
   } catch (err) {
-    if (err instanceof UnknownAssigneeError) {
+    if (err instanceof InvalidAssigneeError) {
       res.status(422).json({ error: err.message })
       return
     }

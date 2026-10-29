@@ -13,6 +13,11 @@ interface ListOptions {
   limit?: number
 }
 
+// Prisma passes `contains` straight into ILIKE, so % and _ would act as wildcards.
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&')
+}
+
 export async function listTickets(opts: ListOptions) {
   const where: Prisma.TicketWhereInput = {}
 
@@ -20,10 +25,11 @@ export async function listTickets(opts: ListOptions) {
   if (opts.priority) where.priority = opts.priority
   if (opts.assigneeId) where.assigneeId = opts.assigneeId
   if (opts.search) {
+    const search = escapeLike(opts.search)
     where.OR = [
-      { subject: { contains: opts.search, mode: 'insensitive' } },
-      { customerEmail: { contains: opts.search, mode: 'insensitive' } },
-      { customerName: { contains: opts.search, mode: 'insensitive' } },
+      { subject: { contains: search, mode: 'insensitive' } },
+      { customerEmail: { contains: search, mode: 'insensitive' } },
+      { customerName: { contains: search, mode: 'insensitive' } },
     ]
   }
 
@@ -66,11 +72,8 @@ export async function findTicketById(id: string) {
   })
 }
 
-export class UnknownAssigneeError extends Error {
-  constructor() {
-    super('Unknown assignee')
-  }
-}
+// The assignee must be an existing, active user; the message is safe to return as a 422.
+export class InvalidAssigneeError extends Error {}
 
 interface UpdateFields {
   status?: TicketStatus
@@ -85,7 +88,8 @@ export async function updateTicket(id: string, fields: UpdateFields, actorId: st
 
     if (fields.assigneeId) {
       const assignee = await tx.user.findUnique({ where: { id: fields.assigneeId } })
-      if (!assignee) throw new UnknownAssigneeError()
+      if (!assignee) throw new InvalidAssigneeError('Unknown assignee')
+      if (assignee.isBlocked) throw new InvalidAssigneeError('Assignee is blocked')
     }
 
     const historyEntries: Prisma.TicketHistoryCreateManyInput[] = []
