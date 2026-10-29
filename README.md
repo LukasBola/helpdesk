@@ -83,15 +83,16 @@ pnpm dev
 
 ### Environment variables
 
-| Variable                 | Required           | Description                                     |
-| ------------------------ | ------------------ | ----------------------------------------------- |
-| `DATABASE_URL`           | Yes                | PostgreSQL connection string                    |
-| `BETTER_AUTH_SECRET`     | Yes                | Min 32 characters, used to sign session cookies |
-| `BETTER_AUTH_URL`        | Yes                | Backend base URL, e.g. `http://localhost:3000`  |
-| `ANTHROPIC_API_KEY`      | For AI features    | Claude API key                                  |
-| `POSTMARK_WEBHOOK_TOKEN` | For inbound email  | Postmark webhook validation token               |
-| `RESEND_API_KEY`         | For outbound email | Resend API key for sending replies              |
-| `PORT`                   | No                 | Backend port, defaults to `3000`                |
+| Variable                 | Required           | Description                                                                                    |
+| ------------------------ | ------------------ | ---------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | Yes                | PostgreSQL connection string                                                                   |
+| `BETTER_AUTH_SECRET`     | Yes                | Min 32 characters, used to sign session cookies                                                |
+| `BETTER_AUTH_URL`        | Yes                | Backend base URL, e.g. `http://localhost:3000`                                                 |
+| `CLIENT_URL`             | Production only    | Frontend origin trusted by Better Auth; defaults to `http://localhost:5173` outside production |
+| `ANTHROPIC_API_KEY`      | For AI features    | Claude API key                                                                                 |
+| `POSTMARK_WEBHOOK_TOKEN` | For inbound email  | Postmark webhook validation token                                                              |
+| `RESEND_API_KEY`         | For outbound email | Resend API key for sending replies                                                             |
+| `PORT`                   | No                 | Backend port, defaults to `3000`                                                               |
 
 ## Testing
 
