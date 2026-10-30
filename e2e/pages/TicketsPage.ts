@@ -51,9 +51,12 @@ export class TicketsPage {
     return this.control(subject, 'Przypisany do')
   }
 
+  replyBox(subject: string): Locator {
+    return this.panel(subject).getByRole('textbox', { name: 'Odpowiedź' })
+  }
+
   async reply(subject: string, text: string) {
-    const panel = this.panel(subject)
-    await panel.getByRole('textbox', { name: 'Odpowiedź' }).fill(text)
-    await panel.getByRole('button', { name: 'Wyślij' }).click()
+    await this.replyBox(subject).fill(text)
+    await this.panel(subject).getByRole('button', { name: 'Wyślij' }).click()
   }
 }
