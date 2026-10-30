@@ -18,7 +18,7 @@ test.describe('Skrzynka ticketów', () => {
     await tickets.reply(subject, 'Dzień dobry, sprawdzamy.')
 
     await expect(tickets.statusSelect(subject)).toHaveText('W toku')
-    await expect(tickets.thread.getByText('Dzień dobry, sprawdzamy.')).toBeVisible()
+    await expect(tickets.thread.getByText('Dzień dobry, sprawdzamy.').first()).toBeVisible()
     await expect(
       tickets.thread.getByText(`${USERS.agent.name} · Status: Otwarty → W toku`).first(),
     ).toBeVisible()

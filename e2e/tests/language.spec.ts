@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 
+import { signInAs } from '../fixtures/api'
 import { USERS } from '../fixtures/users'
 import { AppShell } from '../pages/AppShell'
 import { LoginPage } from '../pages/LoginPage'
@@ -11,6 +12,12 @@ test('język wybrany na koncie wraca po wylogowaniu i na nowym urządzeniu', asy
   browser,
 }) => {
   const { email, password } = USERS.locale
+  // A previous attempt leaves the account on English: start every attempt from Polish.
+  const account = await signInAs('locale')
+  const reset = await account.post('/api/auth/update-user', { data: { locale: 'pl' } })
+  expect(reset.status()).toBe(200)
+  await account.dispose()
+
   const login = new LoginPage(page)
   await login.goto()
   await login.login(email, password)
