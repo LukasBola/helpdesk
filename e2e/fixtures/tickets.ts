@@ -7,6 +7,9 @@ export const TICKETS = {
   patchStatus: { subject: 'E2E Do zmiany statusu', status: 'OPEN', priority: 'MEDIUM' },
   patchAssign: { subject: 'E2E Do przypisania', status: 'OPEN', priority: 'MEDIUM' },
   patchInvalid: { subject: 'E2E Błędne dane', status: 'OPEN', priority: 'MEDIUM' },
+  apiReply: { subject: 'E2E API odpowiedź', status: 'OPEN', priority: 'MEDIUM' },
+  uiReply: { subject: 'E2E Do odpowiedzi', status: 'OPEN', priority: 'MEDIUM' },
+  uiAssign: { subject: 'E2E Do przypisania w UI', status: 'OPEN', priority: 'LOW' },
 } as const
 
 // Every fixture's customer e-mail ends with this domain, which no real ticket uses.
