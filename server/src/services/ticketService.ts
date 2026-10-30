@@ -135,3 +135,38 @@ export async function updateTicket(id: string, fields: UpdateFields, actorId: st
     return updated
   })
 }
+
+export const REPLY_MAX_LENGTH = 10_000
+
+// Saves the reply and, for an OPEN ticket, moves it to IN_PROGRESS in the same transaction.
+// The status is changed by a conditional updateMany so Postgres settles races: a concurrent
+// change (e.g. RESOLVED) is never overwritten and only one writer records the history row.
+export async function createReply(ticketId: string, body: string, actorId: string) {
+  return prisma.$transaction(async tx => {
+    const ticket = await tx.ticket.findUnique({ where: { id: ticketId }, select: { id: true } })
+    if (!ticket) return null
+
+    const reply = await tx.reply.create({
+      data: { ticketId, userId: actorId, body },
+      include: { user: { select: { id: true, name: true } } },
+    })
+
+    const { count } = await tx.ticket.updateMany({
+      where: { id: ticketId, status: 'OPEN' },
+      data: { status: 'IN_PROGRESS' },
+    })
+    if (count === 1) {
+      await tx.ticketHistory.create({
+        data: {
+          ticketId,
+          userId: actorId,
+          field: 'status',
+          oldValue: 'OPEN',
+          newValue: 'IN_PROGRESS',
+        },
+      })
+    }
+
+    return reply
+  })
+}

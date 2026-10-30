@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { prisma } from '../db'
-import { findTicketById, listTickets, updateTicket } from './ticketService'
+import { createReply, findTicketById, listTickets, updateTicket } from './ticketService'
 
 let ticketId: string
+let replyTicketId: string
 
 beforeAll(async () => {
   await prisma.user.create({
@@ -26,11 +27,23 @@ beforeAll(async () => {
     },
   })
   ticketId = t.id
+  replyTicketId = (
+    await prisma.ticket.create({
+      data: {
+        messageId: 'svc-test-reply@test.com',
+        customerEmail: 'c@test.com',
+        subject: 'Reply ticket',
+        body: 'body',
+        status: 'OPEN',
+      },
+    })
+  ).id
 })
 
 afterAll(async () => {
-  await prisma.ticketHistory.deleteMany({ where: { ticketId } })
-  await prisma.ticket.deleteMany({ where: { id: ticketId } })
+  await prisma.reply.deleteMany({ where: { ticketId: { in: [ticketId, replyTicketId] } } })
+  await prisma.ticketHistory.deleteMany({ where: { ticketId: { in: [ticketId, replyTicketId] } } })
+  await prisma.ticket.deleteMany({ where: { id: { in: [ticketId, replyTicketId] } } })
   await prisma.user.deleteMany({ where: { id: 'user-system' } })
 })
 
@@ -171,5 +184,22 @@ describe('updateTicket', () => {
     expect(history[0].field).toBe('status')
     expect(history[0].oldValue).toBe('OPEN')
     expect(history[0].newValue).toBe('IN_PROGRESS')
+  })
+})
+
+describe('createReply', () => {
+  it('returns null for an unknown ticket', async () => {
+    expect(await createReply('does-not-exist', 'Hi', 'user-system')).toBeNull()
+  })
+
+  it('the automatic status history is never older than its reply', async () => {
+    // Timestamps may be equal (Review Focus 3); the client orders the tie.
+    const reply = await createReply(replyTicketId, 'Hi', 'user-system')
+    if (!reply) throw new Error('reply not created')
+    expect(reply).toMatchObject({ user: { id: 'user-system', name: 'System' } })
+    const historyRow = await prisma.ticketHistory.findFirstOrThrow({
+      where: { ticketId: replyTicketId, field: 'status' },
+    })
+    expect(historyRow.createdAt.getTime()).toBeGreaterThanOrEqual(reply.sentAt.getTime())
   })
 })
