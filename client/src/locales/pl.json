@@ -2,7 +2,8 @@
   "common": {
     "loading": "Ładowanie",
     "close": "Zamknij",
-    "soon": "Wkrótce"
+    "soon": "Wkrótce",
+    "retry": "Spróbuj ponownie"
   },
   "auth": {
     "subtitle": "Zaloguj się do panelu agenta",
@@ -42,7 +43,33 @@
     "notFound": "Nie znaleziono zasobu.",
     "validation": "Nieprawidłowe dane. Sprawdź i spróbuj ponownie."
   },
-  "tickets": {},
+  "tickets": {
+    "selectPrompt": "Wybierz ticket",
+    "empty": "Brak ticketów dla tych filtrów",
+    "clearFilters": "Wyczyść filtry",
+    "loadMore": "Pokaż więcej",
+    "back": "Wróć do listy",
+    "loadError": "Nie udało się wczytać ticketów.",
+    "listLabel": "Lista ticketów",
+    "searchPlaceholder": "Szukaj…",
+    "filter": {
+      "status": "Status",
+      "priority": "Priorytet",
+      "assignee": "Przypisanie",
+      "search": "Szukaj w ticketach",
+      "sort": "Sortowanie",
+      "allStatuses": "Wszystkie",
+      "anyPriority": "Dowolny",
+      "allAssignees": "Wszystkie",
+      "mine": "Moje",
+      "unassigned": "Nieprzypisane"
+    },
+    "sort": {
+      "oldest": "Najstarsze",
+      "newest": "Najnowsze",
+      "priority": "Priorytet"
+    }
+  },
   "thread": {},
   "reply": {},
   "status": {

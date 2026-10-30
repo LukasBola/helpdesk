@@ -7,6 +7,12 @@ import { mockSession, renderRoute } from '@/test/render'
 
 // Dynamic import: a static one may evaluate after '@/lib/auth-client' is first imported.
 vi.mock('@/lib/auth-client', async () => (await import('@/test/auth-client-mock')).authClientMock())
+// The tickets page behind /tickets fetches on mount; answer with empty data.
+vi.mock('@/lib/api', () => ({
+  api: {
+    get: vi.fn(async () => ({ data: { tickets: [], users: [], total: 0, page: 1, limit: 25 } })),
+  },
+}))
 
 describe('AppShell', () => {
   beforeEach(() => {

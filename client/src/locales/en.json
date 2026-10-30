@@ -2,7 +2,8 @@
   "common": {
     "loading": "Loading",
     "close": "Close",
-    "soon": "Coming soon"
+    "soon": "Coming soon",
+    "retry": "Try again"
   },
   "auth": {
     "subtitle": "Sign in to the agent panel",
@@ -42,7 +43,33 @@
     "notFound": "Not found.",
     "validation": "Invalid data. Check it and try again."
   },
-  "tickets": {},
+  "tickets": {
+    "selectPrompt": "Select a ticket",
+    "empty": "No tickets match these filters",
+    "clearFilters": "Clear filters",
+    "loadMore": "Show more",
+    "back": "Back to list",
+    "loadError": "Could not load tickets.",
+    "listLabel": "Ticket list",
+    "searchPlaceholder": "Search…",
+    "filter": {
+      "status": "Status",
+      "priority": "Priority",
+      "assignee": "Assignee",
+      "search": "Search tickets",
+      "sort": "Sort",
+      "allStatuses": "All",
+      "anyPriority": "Any",
+      "allAssignees": "All",
+      "mine": "Mine",
+      "unassigned": "Unassigned"
+    },
+    "sort": {
+      "oldest": "Oldest first",
+      "newest": "Newest first",
+      "priority": "Priority"
+    }
+  },
   "thread": {},
   "reply": {},
   "status": {

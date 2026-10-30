@@ -7,6 +7,12 @@ import { updateUser } from '@/lib/auth-client'
 import { mockSession, renderRoute } from '@/test/render'
 
 vi.mock('@/lib/auth-client', async () => (await import('@/test/auth-client-mock')).authClientMock())
+// The tickets page behind /tickets fetches on mount; answer with empty data.
+vi.mock('@/lib/api', () => ({
+  api: {
+    get: vi.fn(async () => ({ data: { tickets: [], users: [], total: 0, page: 1, limit: 25 } })),
+  },
+}))
 
 async function openUserMenu(user: ReturnType<typeof userEvent.setup>) {
   // The accessible name follows the UI language.
