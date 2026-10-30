@@ -1,6 +1,7 @@
 import { LogOut } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useChangeLanguage } from '@/hooks/useLanguage'
 import { useLogout } from '@/hooks/useLogout'
 import type { SessionUser } from '@/lib/auth-client'
 
@@ -24,6 +26,7 @@ function initials(name: string): string {
 export function UserMenu({ user }: { user: SessionUser }) {
   const { t } = useTranslation()
   const logout = useLogout()
+  const { change, error } = useChangeLanguage()
 
   return (
     <DropdownMenu>
@@ -40,6 +43,15 @@ export function UserMenu({ user }: { user: SessionUser }) {
             {t(`shell.role.${user.role}`)}
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <div className="px-2 py-1">
+          <LanguageSwitcher onChange={lng => void change(lng)} />
+          {error && (
+            <p role="alert" className="mt-1 text-xs text-rose-600">
+              {t('language.saveError')}
+            </p>
+          )}
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="min-h-11 cursor-pointer text-rose-600 focus:bg-rose-50 focus:text-rose-600"

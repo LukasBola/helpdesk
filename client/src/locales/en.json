@@ -31,7 +31,8 @@
     "back": "Back to tickets"
   },
   "language": {
-    "label": "Language"
+    "label": "Language",
+    "saveError": "Could not save your language to your account."
   },
   "errors": {
     "badCredentials": "Incorrect email or password",

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
@@ -7,6 +8,9 @@ import { DEFAULT_PATH } from '@/lib/redirect'
 
 export function NotFoundPage() {
   const { t } = useTranslation()
+  useEffect(() => {
+    document.title = `${t('notFound.title')} · helpdesk`
+  }, [t])
   return (
     <main className="flex min-h-screen items-center justify-center bg-app px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-card">

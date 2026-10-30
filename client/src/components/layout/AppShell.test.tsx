@@ -21,6 +21,15 @@ describe('AppShell', () => {
     expect(screen.getByText('Anna 👋')).toBeInTheDocument()
   })
 
+  it('renders the page title as the only h1 and sets document.title', () => {
+    mockSession({})
+    renderRoute('/tickets/mine')
+    const headings = screen.getAllByRole('heading', { level: 1 })
+    expect(headings).toHaveLength(1)
+    expect(headings[0]).toHaveTextContent('Moje')
+    expect(document.title).toBe('Moje · helpdesk')
+  })
+
   it('hides Użytkownicy for an AGENT', () => {
     mockSession({ role: 'AGENT' })
     renderRoute('/tickets')

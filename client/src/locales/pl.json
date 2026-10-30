@@ -31,7 +31,8 @@
     "back": "Wróć do ticketów"
   },
   "language": {
-    "label": "Język"
+    "label": "Język",
+    "saveError": "Nie udało się zapisać języka na koncie."
   },
   "errors": {
     "badCredentials": "Nieprawidłowy e-mail lub hasło",
