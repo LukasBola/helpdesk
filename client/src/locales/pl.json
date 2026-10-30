@@ -37,7 +37,10 @@
   "errors": {
     "badCredentials": "Nieprawidłowy e-mail lub hasło",
     "rateLimited": "Za dużo prób. Spróbuj za chwilę.",
-    "generic": "Coś poszło nie tak. Spróbuj ponownie."
+    "generic": "Coś poszło nie tak. Spróbuj ponownie.",
+    "network": "Brak połączenia z serwerem. Sprawdź internet.",
+    "notFound": "Nie znaleziono zasobu.",
+    "validation": "Nieprawidłowe dane. Sprawdź i spróbuj ponownie."
   },
   "tickets": {},
   "thread": {},

@@ -37,7 +37,10 @@
   "errors": {
     "badCredentials": "Incorrect email or password",
     "rateLimited": "Too many attempts. Try again shortly.",
-    "generic": "Something went wrong. Please try again."
+    "generic": "Something went wrong. Please try again.",
+    "network": "Can't reach the server. Check your connection.",
+    "notFound": "Not found.",
+    "validation": "Invalid data. Check it and try again."
   },
   "tickets": {},
   "thread": {},
