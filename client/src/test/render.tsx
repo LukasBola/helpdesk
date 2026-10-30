@@ -5,10 +5,8 @@ import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 
 import { AppRoutes, ROUTER_FUTURE } from '@/App'
+export { authClientMock } from './auth-client-mock'
 import { type SessionUser, useSession } from '@/lib/auth-client'
-
-// Test files must mock the auth client themselves, e.g.:
-// vi.mock('@/lib/auth-client', () => ({ useSession: vi.fn(), signIn: { email: vi.fn() }, signOut: vi.fn() }))
 
 // The mocked useSession reads from a tiny store, so components re-render when a test
 // changes the session, like the real Better Auth store does after sign-in.
@@ -42,6 +40,7 @@ export function mockSession(
           emailVerified: false,
           role: 'AGENT' as const,
           isBlocked: false,
+          locale: null,
           createdAt: new Date(),
           updatedAt: new Date(),
           ...user,

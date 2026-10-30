@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { prisma } from '../db'
-import { findTicketById, listTickets, updateTicket } from './ticketService'
+import { createReply, findTicketById, listTickets, updateTicket } from './ticketService'
 
 let ticketId: string
+let replyTicketId: string
 
 beforeAll(async () => {
   await prisma.user.create({
@@ -26,11 +27,23 @@ beforeAll(async () => {
     },
   })
   ticketId = t.id
+  replyTicketId = (
+    await prisma.ticket.create({
+      data: {
+        messageId: 'svc-test-reply@test.com',
+        customerEmail: 'c@test.com',
+        subject: 'Reply ticket',
+        body: 'body',
+        status: 'OPEN',
+      },
+    })
+  ).id
 })
 
 afterAll(async () => {
-  await prisma.ticketHistory.deleteMany({ where: { ticketId } })
-  await prisma.ticket.deleteMany({ where: { id: ticketId } })
+  await prisma.reply.deleteMany({ where: { ticketId: { in: [ticketId, replyTicketId] } } })
+  await prisma.ticketHistory.deleteMany({ where: { ticketId: { in: [ticketId, replyTicketId] } } })
+  await prisma.ticket.deleteMany({ where: { id: { in: [ticketId, replyTicketId] } } })
   await prisma.user.deleteMany({ where: { id: 'user-system' } })
 })
 
@@ -91,6 +104,62 @@ describe('listTickets pagination', () => {
   )
 })
 
+describe('listTickets unassigned filter and priority tie-break', () => {
+  const PREFIX = 'svc-unassigned-'
+  let unassignedId: string
+  let assignedId: string
+  let olderId: string
+  let newerId: string
+
+  beforeAll(async () => {
+    const mk = (key: string, extra: object = {}) =>
+      prisma.ticket.create({
+        data: {
+          messageId: `${PREFIX}${key}@test.com`,
+          customerEmail: 'unassigned@test.com',
+          subject: `Unassigned ${key}`,
+          body: 'body',
+          ...extra,
+        },
+      })
+    unassignedId = (await mk('free')).id
+    assignedId = (await mk('taken', { assigneeId: 'user-system' })).id
+    newerId = (
+      await mk('newer', { priority: 'URGENT', createdAt: new Date('2026-01-02T00:00:00Z') })
+    ).id
+    olderId = (
+      await mk('older', { priority: 'URGENT', createdAt: new Date('2026-01-01T00:00:00Z') })
+    ).id
+  })
+
+  afterAll(async () => {
+    await prisma.ticket.deleteMany({ where: { messageId: { startsWith: PREFIX } } })
+  })
+
+  it('assigneeId "none" returns only unassigned tickets', async () => {
+    const { tickets } = await listTickets({ assigneeId: 'none', limit: 100 })
+    expect(tickets.every(t => t.assigneeId === null)).toBe(true)
+    const ids = tickets.map(t => t.id)
+    expect(ids).toContain(unassignedId)
+    expect(ids).not.toContain(assignedId)
+  })
+
+  it.each(['asc', 'desc'] as const)(
+    'priority sort (%s) lists older tickets first within the same priority',
+    async order => {
+      const { tickets } = await listTickets({
+        orderBy: 'priority',
+        order,
+        priority: 'URGENT',
+        limit: 100,
+      })
+      const ids = tickets.map(t => t.id)
+      expect(ids.indexOf(olderId)).toBeGreaterThanOrEqual(0)
+      expect(ids.indexOf(olderId)).toBeLessThan(ids.indexOf(newerId))
+    },
+  )
+})
+
 describe('findTicketById', () => {
   it('returns ticket with history', async () => {
     const ticket = await findTicketById(ticketId)
@@ -115,5 +184,22 @@ describe('updateTicket', () => {
     expect(history[0].field).toBe('status')
     expect(history[0].oldValue).toBe('OPEN')
     expect(history[0].newValue).toBe('IN_PROGRESS')
+  })
+})
+
+describe('createReply', () => {
+  it('returns null for an unknown ticket', async () => {
+    expect(await createReply('does-not-exist', 'Hi', 'user-system')).toBeNull()
+  })
+
+  it('the automatic status history is never older than its reply', async () => {
+    // Timestamps may be equal (Review Focus 3); the client orders the tie.
+    const reply = await createReply(replyTicketId, 'Hi', 'user-system')
+    if (!reply) throw new Error('reply not created')
+    expect(reply).toMatchObject({ user: { id: 'user-system', name: 'System' } })
+    const historyRow = await prisma.ticketHistory.findFirstOrThrow({
+      where: { ticketId: replyTicketId, field: 'status' },
+    })
+    expect(historyRow.createdAt.getTime()).toBeGreaterThanOrEqual(reply.sentAt.getTime())
   })
 })

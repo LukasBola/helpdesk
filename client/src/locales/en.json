@@ -1,0 +1,110 @@
+{
+  "common": {
+    "loading": "Loading",
+    "close": "Close",
+    "soon": "Coming soon",
+    "retry": "Try again"
+  },
+  "auth": {
+    "subtitle": "Sign in to the agent panel",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "logout": "Log out",
+    "userMenu": "User menu"
+  },
+  "nav": {
+    "tickets": "Tickets",
+    "mine": "Mine",
+    "knowledgeBase": "Knowledge base",
+    "users": "Users",
+    "openMenu": "Open menu"
+  },
+  "shell": {
+    "greeting": "Good morning,",
+    "role": {
+      "ADMIN": "administrator",
+      "AGENT": "agent"
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "back": "Back to tickets"
+  },
+  "language": {
+    "label": "Language",
+    "saveError": "Could not save your language to your account."
+  },
+  "errors": {
+    "badCredentials": "Incorrect email or password",
+    "rateLimited": "Too many attempts. Try again shortly.",
+    "generic": "Something went wrong. Please try again.",
+    "network": "Can't reach the server. Check your connection.",
+    "notFound": "Not found.",
+    "validation": "Invalid data. Check it and try again."
+  },
+  "tickets": {
+    "selectPrompt": "Select a ticket",
+    "empty": "No tickets match these filters",
+    "clearFilters": "Clear filters",
+    "loadMore": "Show more",
+    "back": "Back to list",
+    "loadError": "Could not load tickets.",
+    "listLabel": "Ticket list",
+    "searchPlaceholder": "Search…",
+    "filter": {
+      "status": "Status",
+      "priority": "Priority",
+      "assignee": "Assignee",
+      "search": "Search tickets",
+      "sort": "Sort",
+      "allStatuses": "All",
+      "anyPriority": "Any",
+      "allAssignees": "All",
+      "mine": "Mine",
+      "unassigned": "Unassigned"
+    },
+    "sort": {
+      "oldest": "Oldest first",
+      "newest": "Newest first",
+      "priority": "Priority"
+    },
+    "notFound": "Ticket not found",
+    "panelLoading": "Loading ticket",
+    "panelError": "Could not load the ticket.",
+    "thread": "Ticket thread",
+    "control": {
+      "status": "Status",
+      "priority": "Priority",
+      "assignee": "Assigned to"
+    },
+    "refreshError": "Could not refresh the ticket."
+  },
+  "thread": {
+    "unassigned": "Unassigned",
+    "unknownUser": "unknown user",
+    "history": {
+      "status": "{{user}} · Status: {{from}} → {{to}}",
+      "priority": "{{user}} · Priority: {{from}} → {{to}}",
+      "assignee": "{{user}} · Assignment: {{from}} → {{to}}"
+    }
+  },
+  "reply": {
+    "label": "Reply",
+    "placeholder": "Write a reply…",
+    "send": "Send",
+    "threadOnlyNote": "For now the reply is saved to the thread only — the customer won't get an email."
+  },
+  "status": {
+    "OPEN": "Open",
+    "IN_PROGRESS": "In progress",
+    "RESOLVED": "Resolved",
+    "CLOSED": "Closed"
+  },
+  "priority": {
+    "LOW": "Low",
+    "MEDIUM": "Medium",
+    "HIGH": "High",
+    "URGENT": "Urgent"
+  }
+}

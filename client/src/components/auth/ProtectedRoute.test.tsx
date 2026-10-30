@@ -3,12 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { mockSession, renderRoute } from '@/test/render'
 
-vi.mock('@/lib/auth-client', () => ({
-  useSession: vi.fn(),
-  signIn: { email: vi.fn() },
-  signOut: vi.fn(),
-  refreshSession: vi.fn(),
-}))
+// Dynamic import: a static one may evaluate after '@/lib/auth-client' is first imported.
+vi.mock('@/lib/auth-client', async () => (await import('@/test/auth-client-mock')).authClientMock())
 
 describe('route protection', () => {
   it('shows the login page when there is no session', () => {

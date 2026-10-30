@@ -9,12 +9,13 @@ export const authClient = createAuthClient({
       user: {
         role: { type: ['AGENT', 'ADMIN'] },
         isBlocked: { type: 'boolean' },
+        locale: { type: ['pl', 'en'], required: false },
       },
     }),
   ],
 })
 
-export const { useSession, signIn, signOut } = authClient
+export const { useSession, signIn, signOut, updateUser } = authClient
 
 export type Session = typeof authClient.$Infer.Session
 export type SessionUser = Session['user']

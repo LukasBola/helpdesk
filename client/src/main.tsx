@@ -1,3 +1,5 @@
+import '@fontsource-variable/plus-jakarta-sans'
+import './i18n'
 import './index.css'
 
 import { QueryClientProvider } from '@tanstack/react-query'

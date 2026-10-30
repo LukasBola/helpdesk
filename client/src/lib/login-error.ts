@@ -1,6 +1,8 @@
 // Mapped by status, not message: the server must not reveal whether an account exists or is blocked.
-export function loginErrorMessage(status: number | undefined): string {
-  if (status === 401 || status === 403) return 'Nieprawidłowy e-mail lub hasło'
-  if (status === 429) return 'Za dużo prób. Spróbuj za chwilę.'
-  return 'Coś poszło nie tak. Spróbuj ponownie.'
+export function loginErrorKey(
+  status: number | undefined,
+): 'errors.badCredentials' | 'errors.rateLimited' | 'errors.generic' {
+  if (status === 401 || status === 403) return 'errors.badCredentials'
+  if (status === 429) return 'errors.rateLimited'
+  return 'errors.generic'
 }

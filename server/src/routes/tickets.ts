@@ -4,9 +4,11 @@ import { z } from 'zod'
 
 import { requireAuth } from '../middleware/auth'
 import {
+  createReply,
   findTicketById,
   InvalidAssigneeError,
   listTickets,
+  REPLY_MAX_LENGTH,
   updateTicket,
 } from '../services/ticketService'
 
@@ -77,6 +79,27 @@ router.patch('/:id', async (req, res, next: NextFunction) => {
       res.status(422).json({ error: err.message })
       return
     }
+    next(err)
+  }
+})
+
+const replyBodySchema = z.object({ body: z.string().trim().min(1).max(REPLY_MAX_LENGTH) })
+
+router.post('/:id/replies', async (req, res, next: NextFunction) => {
+  try {
+    const result = replyBodySchema.safeParse(req.body)
+    if (!result.success) {
+      res.status(422).json({ error: result.error.flatten() })
+      return
+    }
+
+    const reply = await createReply(req.params.id, result.data.body, req.currentUser?.id as string)
+    if (!reply) {
+      res.status(404).json({ error: 'Not found' })
+      return
+    }
+    res.status(201).json(reply)
+  } catch (err) {
     next(err)
   }
 })

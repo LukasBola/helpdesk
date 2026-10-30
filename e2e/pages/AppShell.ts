@@ -21,7 +21,7 @@ export class AppShell {
   }
 
   navLink(label: NavLabel): Locator {
-    return this.page.getByRole('link', { name: label })
+    return this.page.getByRole('link', { name: label, exact: true })
   }
 
   async expectSignedInAs(firstName: string) {
