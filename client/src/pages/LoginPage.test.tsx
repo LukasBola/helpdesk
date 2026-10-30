@@ -112,4 +112,14 @@ describe('LoginPage', () => {
     renderRoute('/login')
     expect(screen.getByRole('button', { name: 'Zaloguj się' })).toBeInTheDocument()
   })
+
+  it('switches the login page to English', async () => {
+    renderRoute('/login')
+    mockSession(null)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'EN' }))
+    expect(screen.getByText('Sign in to the agent panel')).toBeInTheDocument()
+    expect(localStorage.getItem('helpdesk.lang')).toBe('en')
+    expect(document.documentElement.lang).toBe('en')
+  })
 })

@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { loginErrorMessage } from './login-error'
+import { loginErrorKey } from './login-error'
 
-describe('loginErrorMessage', () => {
+describe('loginErrorKey', () => {
   it.each([
-    [401, 'Nieprawidłowy e-mail lub hasło'],
-    [403, 'Nieprawidłowy e-mail lub hasło'],
-    [429, 'Za dużo prób. Spróbuj za chwilę.'],
-    [500, 'Coś poszło nie tak. Spróbuj ponownie.'],
-    [undefined, 'Coś poszło nie tak. Spróbuj ponownie.'],
-  ])('loginErrorMessage(%s)', (status, message) => {
-    expect(loginErrorMessage(status)).toBe(message)
+    [401, 'errors.badCredentials'],
+    [403, 'errors.badCredentials'],
+    [429, 'errors.rateLimited'],
+    [500, 'errors.generic'],
+    [undefined, 'errors.generic'],
+  ])('loginErrorKey(%s)', (status, key) => {
+    expect(loginErrorKey(status)).toBe(key)
   })
 })

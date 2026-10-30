@@ -1,23 +1,26 @@
 import { Loader2 } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Navigate, useLocation } from 'react-router-dom'
 
 import { FullScreenLoader } from '@/components/FullScreenLoader'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { signIn, useSession } from '@/lib/auth-client'
-import { loginErrorMessage } from '@/lib/login-error'
+import { loginErrorKey } from '@/lib/login-error'
 import { safeRedirectPath } from '@/lib/redirect'
 import { getActiveUser } from '@/lib/session'
 
 export function LoginPage() {
+  const { t } = useTranslation()
   const { data, isPending } = useSession()
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<ReturnType<typeof loginErrorKey> | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   if (isPending) return <FullScreenLoader />
@@ -34,9 +37,9 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       const result = await signIn.email({ email, password })
-      if (result.error) setError(loginErrorMessage(result.error.status))
+      if (result.error) setError(loginErrorKey(result.error.status))
     } catch {
-      setError(loginErrorMessage(undefined))
+      setError(loginErrorKey(undefined))
     } finally {
       setSubmitting(false)
     }
@@ -46,10 +49,10 @@ export function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-app px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-card sm:p-8">
         <Logo className="text-lg" />
-        <p className="mb-6 mt-1 text-sm text-muted-foreground">Zaloguj się do panelu agenta</p>
+        <p className="mb-6 mt-1 text-sm text-muted-foreground">{t('auth.subtitle')}</p>
         <form onSubmit={e => void handleSubmit(e)} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="email">E-mail</Label>
+            <Label htmlFor="email">{t('auth.email')}</Label>
             <Input
               id="email"
               type="email"
@@ -61,7 +64,7 @@ export function LoginPage() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="password">Hasło</Label>
+            <Label htmlFor="password">{t('auth.password')}</Label>
             <Input
               id="password"
               type="password"
@@ -74,14 +77,17 @@ export function LoginPage() {
           </div>
           {error && (
             <div role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">
-              {error}
+              {t(error)}
             </div>
           )}
           <Button type="submit" className="min-h-11 w-full font-semibold" disabled={submitting}>
             {submitting && <Loader2 className="animate-spin" aria-hidden />}
-            Zaloguj się
+            {t('auth.submit')}
           </Button>
         </form>
+        <div className="mt-4">
+          <LanguageSwitcher />
+        </div>
       </div>
     </main>
   )

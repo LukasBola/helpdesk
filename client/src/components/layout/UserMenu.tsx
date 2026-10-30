@@ -1,4 +1,5 @@
 import { LogOut } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import {
   DropdownMenu,
@@ -11,11 +12,6 @@ import {
 import { useLogout } from '@/hooks/useLogout'
 import type { SessionUser } from '@/lib/auth-client'
 
-const ROLE_LABELS: Record<SessionUser['role'], string> = {
-  ADMIN: 'administrator',
-  AGENT: 'agent',
-}
-
 function initials(name: string): string {
   return name
     .split(/\s+/)
@@ -26,12 +22,13 @@ function initials(name: string): string {
 }
 
 export function UserMenu({ user }: { user: SessionUser }) {
+  const { t } = useTranslation()
   const logout = useLogout()
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label="Menu użytkownika"
+        aria-label={t('auth.userMenu')}
         className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-indigo-300 to-teal-300 text-sm font-semibold text-indigo-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {initials(user.name)}
@@ -39,7 +36,9 @@ export function UserMenu({ user }: { user: SessionUser }) {
       <DropdownMenuContent align="end" className="w-52 rounded-xl">
         <DropdownMenuLabel>
           <div className="truncate font-semibold">{user.name}</div>
-          <div className="text-xs font-normal text-muted-foreground">{ROLE_LABELS[user.role]}</div>
+          <div className="text-xs font-normal text-muted-foreground">
+            {t(`shell.role.${user.role}`)}
+          </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -47,7 +46,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
           onSelect={() => void logout()}
         >
           <LogOut className="mr-2 h-4 w-4" aria-hidden />
-          Wyloguj
+          {t('auth.logout')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

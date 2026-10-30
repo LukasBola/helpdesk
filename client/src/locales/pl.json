@@ -1,0 +1,56 @@
+{
+  "common": {
+    "loading": "Ładowanie",
+    "close": "Zamknij",
+    "soon": "Wkrótce"
+  },
+  "auth": {
+    "subtitle": "Zaloguj się do panelu agenta",
+    "email": "E-mail",
+    "password": "Hasło",
+    "submit": "Zaloguj się",
+    "logout": "Wyloguj",
+    "userMenu": "Menu użytkownika"
+  },
+  "nav": {
+    "tickets": "Tickety",
+    "mine": "Moje",
+    "knowledgeBase": "Baza wiedzy",
+    "users": "Użytkownicy",
+    "openMenu": "Otwórz menu"
+  },
+  "shell": {
+    "greeting": "Dzień dobry,",
+    "role": {
+      "ADMIN": "administrator",
+      "AGENT": "agent"
+    }
+  },
+  "notFound": {
+    "title": "Nie znaleziono strony",
+    "back": "Wróć do ticketów"
+  },
+  "language": {
+    "label": "Język"
+  },
+  "errors": {
+    "badCredentials": "Nieprawidłowy e-mail lub hasło",
+    "rateLimited": "Za dużo prób. Spróbuj za chwilę.",
+    "generic": "Coś poszło nie tak. Spróbuj ponownie."
+  },
+  "tickets": {},
+  "thread": {},
+  "reply": {},
+  "status": {
+    "OPEN": "Otwarty",
+    "IN_PROGRESS": "W toku",
+    "RESOLVED": "Rozwiązany",
+    "CLOSED": "Zamknięty"
+  },
+  "priority": {
+    "LOW": "Niski",
+    "MEDIUM": "Średni",
+    "HIGH": "Wysoki",
+    "URGENT": "Pilny"
+  }
+}

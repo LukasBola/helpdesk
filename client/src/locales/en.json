@@ -1,0 +1,56 @@
+{
+  "common": {
+    "loading": "Loading",
+    "close": "Close",
+    "soon": "Coming soon"
+  },
+  "auth": {
+    "subtitle": "Sign in to the agent panel",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "logout": "Log out",
+    "userMenu": "User menu"
+  },
+  "nav": {
+    "tickets": "Tickets",
+    "mine": "Mine",
+    "knowledgeBase": "Knowledge base",
+    "users": "Users",
+    "openMenu": "Open menu"
+  },
+  "shell": {
+    "greeting": "Good morning,",
+    "role": {
+      "ADMIN": "administrator",
+      "AGENT": "agent"
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "back": "Back to tickets"
+  },
+  "language": {
+    "label": "Language"
+  },
+  "errors": {
+    "badCredentials": "Incorrect email or password",
+    "rateLimited": "Too many attempts. Try again shortly.",
+    "generic": "Something went wrong. Please try again."
+  },
+  "tickets": {},
+  "thread": {},
+  "reply": {},
+  "status": {
+    "OPEN": "Open",
+    "IN_PROGRESS": "In progress",
+    "RESOLVED": "Resolved",
+    "CLOSED": "Closed"
+  },
+  "priority": {
+    "LOW": "Low",
+    "MEDIUM": "Medium",
+    "HIGH": "High",
+    "URGENT": "Urgent"
+  }
+}

@@ -1,5 +1,6 @@
 import { Menu } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Outlet } from 'react-router-dom'
 
 import { Logo } from '@/components/Logo'
@@ -13,6 +14,7 @@ import { UserMenu } from './UserMenu'
 
 // Rendered only inside ProtectedRoute, so an active user is always present.
 export function AppShell() {
+  const { t } = useTranslation()
   const { data } = useSession()
   const user = getActiveUser(data)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -36,7 +38,7 @@ export function AppShell() {
                 variant="ghost"
                 size="icon"
                 className="h-11 w-11 shrink-0 bg-white shadow-soft md:hidden"
-                aria-label="Otwórz menu"
+                aria-label={t('nav.openMenu')}
               >
                 <Menu className="h-5 w-5" />
               </Button>
@@ -56,7 +58,7 @@ export function AppShell() {
           </Sheet>
 
           <div className="min-w-0 flex-1">
-            <p className="text-sm text-muted-foreground">Dzień dobry,</p>
+            <p className="text-sm text-muted-foreground">{t('shell.greeting')}</p>
             <p className="truncate text-lg font-bold text-indigo-950">{firstName} 👋</p>
           </div>
 
