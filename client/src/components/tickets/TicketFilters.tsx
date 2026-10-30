@@ -36,16 +36,22 @@ export function TicketFilters({
   const latest = useRef({ filters, onChange })
   latest.current = { filters, onChange }
 
+  // The last value we pushed to the URL: when it comes back it is our own update, not an
+  // external change (back button, clear filters), and must not overwrite newer typing.
+  const lastSent = useRef(filters.search)
+
   useEffect(() => {
+    if (filters.search === lastSent.current) return
+    lastSent.current = filters.search
     setSearchText(filters.search)
   }, [filters.search])
 
   useEffect(() => {
     if (searchText === latest.current.filters.search) return
-    const timer = setTimeout(
-      () => latest.current.onChange({ ...latest.current.filters, search: searchText }),
-      SEARCH_DEBOUNCE_MS,
-    )
+    const timer = setTimeout(() => {
+      lastSent.current = searchText
+      latest.current.onChange({ ...latest.current.filters, search: searchText })
+    }, SEARCH_DEBOUNCE_MS)
     return () => clearTimeout(timer)
   }, [searchText])
 

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import { TicketPriorityBadge } from '@/components/tickets/TicketPriorityBadge'
+import { TicketStatusBadge } from '@/components/tickets/TicketStatusBadge'
 import type { AppLanguage } from '@/i18n'
 import { formatAge } from '@/lib/format'
 import type { TicketListItem } from '@/lib/tickets-api'
@@ -46,7 +47,10 @@ export function TicketRow({
           {ticket.customerName ?? ticket.customerEmail}
         </span>
       </span>
-      <TicketPriorityBadge priority={ticket.priority} className="shrink-0" />
+      <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
+        <TicketStatusBadge status={ticket.status} />
+        <TicketPriorityBadge priority={ticket.priority} />
+      </span>
       {ticket.assignee && (
         <span
           title={ticket.assignee.name}

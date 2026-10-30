@@ -1,4 +1,10 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useMemo } from 'react'
 
 import {
@@ -15,6 +21,7 @@ export function useTicketList(query: Record<string, string>) {
     queryKey: ['tickets', 'list', query],
     queryFn: ({ pageParam }) => fetchTicketPage(query, pageParam),
     initialPageParam: 1,
+    placeholderData: keepPreviousData,
     getNextPageParam: last => (last.page * last.limit < last.total ? last.page + 1 : undefined),
   })
   // Offset paging repeats a row when a ticket arrives between pages; first occurrence wins.

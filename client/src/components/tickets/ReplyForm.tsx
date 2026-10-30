@@ -22,7 +22,9 @@ export function ReplyForm({ ticketId }: { ticketId: string }) {
 
   const send = () => {
     if (!canSend) return
-    mutate(text.trim(), { onSuccess: () => setText('') })
+    const sent = text
+    // Text typed while the request was pending stays; only the sent text is cleared.
+    mutate(sent.trim(), { onSuccess: () => setText(current => (current === sent ? '' : current)) })
   }
 
   const onSubmit = (e: FormEvent) => {

@@ -48,6 +48,21 @@ describe('ReplyForm', () => {
     await waitFor(() => expect(box).toHaveValue(''))
   })
 
+  it('keeps text typed while the reply is pending', async () => {
+    let resolve!: (v: unknown) => void
+    post.mockReturnValue(new Promise(r => (resolve = r)) as never)
+    const user = userEvent.setup()
+    const { box, send } = setup()
+    await user.type(box, 'Pierwsza')
+    await user.click(send)
+    await waitFor(() => expect(send).toBeDisabled())
+    await user.type(box, ' druga')
+    resolve({ data: {} })
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(send).toBeEnabled())
+    expect(box).toHaveValue('Pierwsza druga')
+  })
+
   it('Ctrl+Enter sends', async () => {
     post.mockResolvedValue({ data: {} } as never)
     const user = userEvent.setup()

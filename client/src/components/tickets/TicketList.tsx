@@ -11,6 +11,7 @@ export function TicketList({
   pathFor,
   isPending,
   isError,
+  isFetchNextPageError,
   hasNextPage,
   isFetchingNextPage,
   onRetry,
@@ -22,6 +23,7 @@ export function TicketList({
   pathFor: (id: string) => string
   isPending: boolean
   isError: boolean
+  isFetchNextPageError: boolean
   hasNextPage: boolean
   isFetchingNextPage: boolean
   onRetry: () => void
@@ -42,7 +44,7 @@ export function TicketList({
     )
   }
 
-  if (isError) {
+  if (isError && tickets.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 py-8 text-center" role="alert">
         <p className="text-sm text-slate-600">{t('tickets.loadError')}</p>
@@ -78,7 +80,20 @@ export function TicketList({
           />
         ))}
       </nav>
-      {hasNextPage && (
+      {isFetchNextPageError && (
+        <div className="flex flex-col items-center gap-2 py-3 text-center" role="alert">
+          <p className="text-sm text-slate-600">{t('tickets.loadError')}</p>
+          <Button
+            variant="outline"
+            className="min-h-11"
+            disabled={isFetchingNextPage}
+            onClick={onLoadMore}
+          >
+            {t('common.retry')}
+          </Button>
+        </div>
+      )}
+      {hasNextPage && !isFetchNextPageError && (
         <Button
           variant="outline"
           className="mt-2 min-h-11"

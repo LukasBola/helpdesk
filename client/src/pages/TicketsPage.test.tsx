@@ -163,6 +163,97 @@ describe('TicketsPage', () => {
     ).toBe(true)
   })
 
+  it('keeps text typed across a debounce boundary', async () => {
+    const user = userEvent.setup()
+    renderRoute('/tickets')
+    await screen.findByText('Temat 1')
+    const box = screen.getByRole('searchbox')
+    await user.type(box, 'fak')
+    await new Promise(r => setTimeout(r, 350))
+    await user.type(box, 'tura')
+    expect(box).toHaveValue('faktura')
+    await waitFor(() =>
+      expect(get).toHaveBeenLastCalledWith('/tickets', {
+        params: expect.objectContaining({ search: 'faktura' }),
+      }),
+    )
+    expect(box).toHaveValue('faktura')
+  })
+
+  it('resets the search box when the URL search changes externally (clear filters)', async () => {
+    respond([{ tickets: [], total: 0 }])
+    const user = userEvent.setup()
+    renderRoute('/tickets?search=abc')
+    expect(screen.getByRole('searchbox')).toHaveValue('abc')
+    await user.click(await screen.findByRole('button', { name: 'Wyczyść filtry' }))
+    await waitFor(() => expect(screen.getByRole('searchbox')).toHaveValue(''))
+  })
+
+  it('clear filters keeps the open ticket path', async () => {
+    respond([{ tickets: [], total: 0 }])
+    const user = userEvent.setup()
+    renderRoute('/tickets/t1?priority=URGENT')
+    await user.click(await screen.findByRole('button', { name: 'Wyczyść filtry' }))
+    await waitFor(() =>
+      expect(get).toHaveBeenLastCalledWith('/tickets', {
+        params: expect.not.objectContaining({ priority: expect.anything() }),
+      }),
+    )
+    expect(screen.getByRole('link', { name: 'Wróć do listy' })).toHaveAttribute('href', '/tickets')
+  })
+
+  it('shows the status of each ticket in the list', async () => {
+    respond([{ tickets: [ticket(1, { status: 'IN_PROGRESS' }), ticket(2)], total: 2 }])
+    renderRoute('/tickets?status=all')
+    const row = await screen.findByRole('link', { name: /Temat 1/ })
+    expect(within(row).getByText('W toku')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('link', { name: /Temat 2/ })).getByText('Otwarty'),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps the previous list visible while a new filter loads', async () => {
+    const user = userEvent.setup()
+    renderRoute('/tickets')
+    await screen.findByText('Temat 1')
+    get.mockImplementation((async (url: string) => {
+      if (url === '/users') return { data: { users } }
+      return new Promise(() => undefined)
+    }) as never)
+    await user.click(screen.getByRole('combobox', { name: 'Priorytet' }))
+    await user.click(await screen.findByRole('option', { name: 'Pilny' }))
+    await waitFor(() =>
+      expect(get).toHaveBeenLastCalledWith('/tickets', {
+        params: expect.objectContaining({ priority: 'URGENT' }),
+      }),
+    )
+    expect(screen.getByText('Temat 1')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('keeps the loaded list and shows an inline retry when "Pokaż więcej" fails', async () => {
+    let failNext = true
+    get.mockImplementation((async (url: string, config?: { params?: { page?: number } }) => {
+      if (url === '/users') return { data: { users } }
+      const page = config?.params?.page ?? 1
+      if (page === 2 && failNext) throw new Error('boom')
+      return {
+        data: { tickets: [ticket(page)], total: 30, page, limit: 25 },
+      }
+    }) as never)
+    const user = userEvent.setup()
+    renderRoute('/tickets')
+    await screen.findByText('Temat 1')
+    await user.click(screen.getByRole('button', { name: 'Pokaż więcej' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Nie udało się wczytać ticketów.')
+    expect(screen.getByText('Temat 1')).toBeInTheDocument()
+    failNext = false
+    await user.click(within(alert).getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(await screen.findByText('Temat 2')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
   it('shows "Pokaż więcej" only while more pages exist and appends the next page', async () => {
     respond([
       { tickets: [ticket(1)], total: 30 },

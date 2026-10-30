@@ -1,6 +1,6 @@
 import { ArrowLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { usePageTitle } from '@/components/layout/PageTitle'
 import { TicketFilters } from '@/components/tickets/TicketFilters'
@@ -20,7 +20,6 @@ import {
 export function TicketsPage({ defaultAssignee }: { defaultAssignee: 'all' | 'me' }) {
   const { t } = useTranslation()
   const { id } = useParams()
-  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const user = useCurrentUser()
   usePageTitle(defaultAssignee === 'me' ? t('nav.mine') : t('nav.tickets'))
@@ -43,11 +42,14 @@ export function TicketsPage({ defaultAssignee }: { defaultAssignee: 'all' | 'me'
             pathFor={ticketId => ticketPath(ticketId, filters)}
             isPending={list.isPending}
             isError={list.isError}
+            isFetchNextPageError={list.isFetchNextPageError}
             hasNextPage={list.hasNextPage}
             isFetchingNextPage={list.isFetchingNextPage}
             onRetry={() => void list.refetch()}
             onLoadMore={() => void list.fetchNextPage()}
-            onClearFilters={() => navigate(defaultAssignee === 'me' ? '/tickets/mine' : '/tickets')}
+            onClearFilters={() =>
+              changeFilters(parseFilters(new URLSearchParams(), defaultAssignee))
+            }
           />
         </div>
       </section>
