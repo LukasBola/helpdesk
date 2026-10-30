@@ -130,4 +130,42 @@ describe('POST /api/auth/update-user', () => {
     const user = await prisma.user.findUniqueOrThrow({ where: { email: EMAIL } })
     expect(user.name).toBe('Auth HTTP')
   })
+
+  it('lets a signed-in user set locale to en and returns it in the session', async () => {
+    const cookie = await signIn(EMAIL, PASSWORD)
+    const res = await request(app)
+      .post('/api/auth/update-user')
+      .set('Cookie', cookie)
+      .send({ locale: 'en' })
+    expect(res.status).toBe(200)
+    const session = await request(app).get('/api/auth/get-session').set('Cookie', cookie)
+    expect(session.body.user.locale).toBe('en')
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: EMAIL } })
+    expect(user.locale).toBe('en')
+  })
+
+  it.each([['de'], [''], [null], [42]])('rejects locale %j with 400', async locale => {
+    const cookie = await signIn(EMAIL, PASSWORD)
+    const res = await request(app)
+      .post('/api/auth/update-user')
+      .set('Cookie', cookie)
+      .send({ locale })
+    expect(res.status).toBe(400)
+  })
+
+  it('does not require a name when only locale is sent', async () => {
+    const cookie = await signIn(EMAIL, PASSWORD)
+    const res = await request(app)
+      .post('/api/auth/update-user')
+      .set('Cookie', cookie)
+      .send({ locale: 'pl' })
+    expect(res.status).toBe(200)
+  })
+
+  it('still rejects role changes through update-user', async () => {
+    const cookie = await signIn(EMAIL, PASSWORD)
+    await request(app).post('/api/auth/update-user').set('Cookie', cookie).send({ role: 'ADMIN' })
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: EMAIL } })
+    expect(user.role).toBe('AGENT')
+  })
 })

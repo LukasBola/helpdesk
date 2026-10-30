@@ -7,6 +7,7 @@ import { env } from '../env'
 
 export const PASSWORD_LENGTH = { min: 8, max: 128 }
 export const NAME_MAX_LENGTH = 100
+export const SUPPORTED_LOCALES = ['pl', 'en'] as const
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
@@ -36,6 +37,11 @@ export const auth = betterAuth({
         defaultValue: false,
         input: false,
       },
+      locale: {
+        type: ['pl', 'en'],
+        required: false,
+        input: true,
+      },
     },
   },
   databaseHooks: {
@@ -58,12 +64,19 @@ export const auth = betterAuth({
   hooks: {
     // Better Auth doesn't validate the name; it's shown to other agents (history, avatar).
     before: createAuthMiddleware(async ctx => {
-      if (ctx.path !== '/update-user' || !ctx.body || !('name' in ctx.body)) return
-      const name = typeof ctx.body.name === 'string' ? ctx.body.name.trim() : ''
-      if (!name || name.length > NAME_MAX_LENGTH) {
-        throw new APIError('BAD_REQUEST', { message: 'Invalid name' })
+      if (ctx.path !== '/update-user' || !ctx.body) return
+      const body = { ...ctx.body }
+      if ('name' in body) {
+        const name = typeof body.name === 'string' ? body.name.trim() : ''
+        if (!name || name.length > NAME_MAX_LENGTH) {
+          throw new APIError('BAD_REQUEST', { message: 'Invalid name' })
+        }
+        body.name = name
       }
-      return { context: { ...ctx, body: { ...ctx.body, name } } }
+      if ('locale' in body && !SUPPORTED_LOCALES.some(locale => locale === body.locale)) {
+        throw new APIError('BAD_REQUEST', { message: 'Invalid locale' })
+      }
+      return { context: { ...ctx, body } }
     }),
   },
   trustedOrigins: [env.CLIENT_URL],
