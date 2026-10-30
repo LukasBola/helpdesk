@@ -82,8 +82,6 @@
   "thread": {
     "unassigned": "Nieprzypisany",
     "unknownUser": "nieznany użytkownik",
-    "customer": "Klient",
-    "empty": "Brak wiadomości",
     "history": {
       "status": "{{user}} · Status: {{from}} → {{to}}",
       "priority": "{{user}} · Priorytet: {{from}} → {{to}}",

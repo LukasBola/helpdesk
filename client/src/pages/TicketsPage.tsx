@@ -62,7 +62,7 @@ export function TicketsPage({ defaultAssignee }: { defaultAssignee: 'all' | 'me'
           </Link>
         )}
         {id ? (
-          <TicketPanel ticketId={id} />
+          <TicketPanel key={id} ticketId={id} />
         ) : (
           <div className="flex min-h-64 items-center justify-center rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-soft">
             {t('tickets.selectPrompt')}

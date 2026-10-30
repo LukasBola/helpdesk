@@ -89,4 +89,10 @@ describe('historyText', () => {
   it('uses the unknown-user label when the author is missing', () => {
     expect(historyText(entry('x', { user: null }), users, t)).toMatch(/^nieznany użytkownik · /)
   })
+
+  it('falls back to the raw value or a dash for unexpected values', () => {
+    expect(historyText(entry('x', { oldValue: null, newValue: 'WEIRD' }), users, t)).toBe(
+      'Anna Kowalska · Status: — → WEIRD',
+    )
+  })
 })

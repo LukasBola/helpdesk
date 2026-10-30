@@ -82,8 +82,6 @@
   "thread": {
     "unassigned": "Unassigned",
     "unknownUser": "unknown user",
-    "customer": "Customer",
-    "empty": "No messages",
     "history": {
       "status": "{{user}} · Status: {{from}} → {{to}}",
       "priority": "{{user}} · Priority: {{from}} → {{to}}",

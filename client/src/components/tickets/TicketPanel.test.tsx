@@ -47,6 +47,8 @@ function setup() {
     if (url === '/users') return { data: { users } }
     if (url === '/tickets')
       return { data: { tickets: listTickets, total: listTickets.length, page: 1, limit: 25 } }
+    if (url === '/tickets/t2')
+      return { data: detail({ id: 't2', subject: 'Drugi temat', body: 'Druga' }) }
     if (url === '/tickets/t1') {
       if (current === 'missing')
         throw new AxiosError('nf', 'ERR', undefined, undefined, { status: 404 } as never)
@@ -193,5 +195,20 @@ describe('TicketPanel', () => {
     const el = await screen.findByText('<b>x</b>')
     expect(el.querySelector('b')).toBeNull()
     expect(el).toHaveClass('whitespace-pre-wrap')
+  })
+
+  it('resets the reply box when switching to another (cached) ticket', async () => {
+    listTickets = [
+      { ...detail(), subject: 'Faktura nie dotarła' } as TicketListItem,
+      { ...detail({ id: 't2', subject: 'Drugi temat' }) } as TicketListItem,
+    ]
+    const user = userEvent.setup()
+    renderRoute('/tickets/t2')
+    await screen.findByRole('region', { name: 'Drugi temat' })
+    await user.click(await screen.findByRole('link', { name: /Faktura nie dotarła/ }))
+    await user.type(await screen.findByRole('textbox', { name: 'Odpowiedź' }), 'szkic dla t1')
+    await user.click(screen.getByRole('link', { name: /Drugi temat/ }))
+    await screen.findByRole('region', { name: 'Drugi temat' })
+    expect(screen.getByRole('textbox', { name: 'Odpowiedź' })).toHaveValue('')
   })
 })
