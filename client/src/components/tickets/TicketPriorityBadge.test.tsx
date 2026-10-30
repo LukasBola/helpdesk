@@ -17,4 +17,8 @@ describe('TicketPriorityBadge', () => {
     render(<TicketPriorityBadge priority="LOW" />)
     expect(screen.getByText('Niski')).toHaveClass('bg-priority-low', 'text-priority-low-fg')
   })
+  it('keeps its colors on hover (no default primary hover background)', () => {
+    render(<TicketPriorityBadge priority="URGENT" />)
+    expect(screen.getByText('Pilny').className).not.toMatch(/hover:bg-/)
+  })
 })

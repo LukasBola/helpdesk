@@ -39,7 +39,7 @@ function detail(over: Partial<TicketDetail> = {}): TicketDetail {
   }
 }
 
-let current: TicketDetail | 'missing'
+let current: TicketDetail | 'missing' | 'fail'
 let listTickets: TicketListItem[]
 
 function setup() {
@@ -50,6 +50,8 @@ function setup() {
     if (url === '/tickets/t2')
       return { data: detail({ id: 't2', subject: 'Drugi temat', body: 'Druga' }) }
     if (url === '/tickets/t1') {
+      if (current === 'fail')
+        throw new AxiosError('boom', 'ERR', undefined, undefined, { status: 500 } as never)
       if (current === 'missing')
         throw new AxiosError('nf', 'ERR', undefined, undefined, { status: 404 } as never)
       return { data: current }
@@ -154,6 +156,27 @@ describe('TicketPanel', () => {
     await user.click(await inPanel('combobox', 'Status'))
     await user.click(await screen.findByRole('option', { name: 'Rozwiązany' }))
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/tickets/t1', { status: 'RESOLVED' }))
+  })
+
+  it('keeps the panel and the reply draft when a background refetch fails', async () => {
+    patch.mockResolvedValue({ data: {} } as never)
+    const user = userEvent.setup()
+    renderRoute('/tickets/t1')
+    const panel = await screen.findByRole('region', { name: 'Faktura nie dotarła' })
+    await user.type(within(panel).getByRole('textbox', { name: 'Odpowiedź' }), 'Szkic')
+    current = 'fail'
+    await user.click(await inPanel('combobox', 'Status'))
+    await user.click(await screen.findByRole('option', { name: 'Rozwiązany' }))
+    await waitFor(() => expect(patch).toHaveBeenCalled())
+    await waitFor(() =>
+      expect(get.mock.calls.filter(([url]) => url === '/tickets/t1').length).toBeGreaterThan(1),
+    )
+    expect(await screen.findByText('Nie udało się odświeżyć ticketu.')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', { name: 'Faktura nie dotarła' })).getByRole('textbox', {
+        name: 'Odpowiedź',
+      }),
+    ).toHaveValue('Szkic')
   })
 
   it('unassigning sends assigneeId null', async () => {

@@ -1,17 +1,19 @@
 import { LogOut } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useChangeLanguage } from '@/hooks/useLanguage'
 import { useLogout } from '@/hooks/useLogout'
+import { type AppLanguage, currentLanguage, LANGUAGES } from '@/i18n'
 import type { SessionUser } from '@/lib/auth-client'
 
 function initials(name: string): string {
@@ -44,14 +46,31 @@ export function UserMenu({ user }: { user: SessionUser }) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <div className="px-2 py-1">
-          <LanguageSwitcher onChange={lng => void change(lng)} />
-          {error && (
-            <p role="alert" className="mt-1 text-xs text-rose-600">
-              {t('language.saveError')}
-            </p>
-          )}
-        </div>
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+          {t('language.label')}
+        </DropdownMenuLabel>
+        {/* Menu radio items, so arrow keys reach the language choice like any menu item. */}
+        <DropdownMenuRadioGroup
+          value={currentLanguage()}
+          onValueChange={value => void change(value as AppLanguage)}
+        >
+          {LANGUAGES.map(lng => (
+            <DropdownMenuRadioItem
+              key={lng}
+              value={lng}
+              className="min-h-11 cursor-pointer"
+              // Keep the menu open, so a save error stays visible.
+              onSelect={event => event.preventDefault()}
+            >
+              {lng.toUpperCase()}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        {error && (
+          <p role="alert" className="px-2 py-1 text-xs text-rose-600">
+            {t('language.saveError')}
+          </p>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="min-h-11 cursor-pointer text-rose-600 focus:bg-rose-50 focus:text-rose-600"

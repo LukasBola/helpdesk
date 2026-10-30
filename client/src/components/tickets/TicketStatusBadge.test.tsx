@@ -18,4 +18,8 @@ describe('TicketStatusBadge', () => {
     const badge = screen.getByText('Rozwiązany')
     expect(badge).toHaveClass('bg-status-resolved', 'text-status-resolved-fg')
   })
+  it('keeps its colors on hover (no default primary hover background)', () => {
+    render(<TicketStatusBadge status="RESOLVED" />)
+    expect(screen.getByText('Rozwiązany').className).not.toMatch(/hover:bg-/)
+  })
 })

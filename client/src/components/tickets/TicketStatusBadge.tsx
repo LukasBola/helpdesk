@@ -22,6 +22,7 @@ export function TicketStatusBadge({
   const { t } = useTranslation()
   return (
     <Badge
+      variant="outline"
       className={cn('border-transparent whitespace-nowrap', STATUS_CLASSES[status], className)}
     >
       {t(`status.${status}`)}

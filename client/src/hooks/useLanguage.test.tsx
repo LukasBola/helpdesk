@@ -20,6 +20,10 @@ async function openUserMenu(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name }))
 }
 
+async function openUserMenuAgain(user: ReturnType<typeof userEvent.setup>) {
+  if (!screen.queryByRole('menu')) await openUserMenu(user)
+}
+
 describe('language sync with the account', () => {
   beforeEach(() => {
     vi.mocked(updateUser).mockReset()
@@ -58,7 +62,7 @@ describe('language sync with the account', () => {
     renderRoute('/tickets')
     const user = userEvent.setup()
     await openUserMenu(user)
-    await user.click(screen.getByRole('button', { name: 'EN' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'EN' }))
     expect(updateUser).toHaveBeenCalledWith({ locale: 'en' })
     expect(screen.getByText('Good morning,')).toBeInTheDocument() // still EN with session.locale === 'pl'
     resolve()
@@ -70,7 +74,7 @@ describe('language sync with the account', () => {
     renderRoute('/tickets')
     const user = userEvent.setup()
     await openUserMenu(user)
-    await user.click(screen.getByRole('button', { name: 'EN' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'EN' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Could not save your language to your account.',
     )
@@ -86,7 +90,46 @@ describe('language sync with the account', () => {
     renderRoute('/tickets')
     const user = userEvent.setup()
     await openUserMenu(user)
-    await user.click(screen.getByRole('button', { name: 'EN' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'EN' }))
     expect(await screen.findByRole('alert')).toBeInTheDocument()
+  })
+  it('offers the account language as keyboard-reachable menu radio items', async () => {
+    vi.mocked(updateUser).mockResolvedValue({ data: {}, error: null } as never)
+    mockSession({ locale: 'pl' })
+    renderRoute('/tickets')
+    const user = userEvent.setup()
+    await openUserMenu(user)
+    expect(screen.getByRole('menuitemradio', { name: 'PL' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    screen.getByRole('menuitemradio', { name: 'EN' }).focus()
+    await user.keyboard('{Enter}')
+    expect(updateUser).toHaveBeenCalledWith({ locale: 'en' })
+    expect(await screen.findByText('Good morning,')).toBeInTheDocument()
+  })
+
+  it('saves quick consecutive switches in order, so the last choice wins', async () => {
+    const pending: (() => void)[] = []
+    vi.mocked(updateUser).mockImplementation(
+      () =>
+        new Promise(r => {
+          pending.push(() => r({ data: {}, error: null }))
+        }) as never,
+    )
+    mockSession({ locale: 'pl' })
+    renderRoute('/tickets')
+    const user = userEvent.setup()
+    await openUserMenu(user)
+    await user.click(screen.getByRole('menuitemradio', { name: 'EN' }))
+    await openUserMenuAgain(user)
+    await user.click(screen.getByRole('menuitemradio', { name: 'PL' }))
+    // The second save waits for the first one to finish.
+    expect(updateUser).toHaveBeenCalledTimes(1)
+    expect(updateUser).toHaveBeenLastCalledWith({ locale: 'en' })
+    pending[0]()
+    await vi.waitFor(() => expect(updateUser).toHaveBeenCalledTimes(2))
+    expect(updateUser).toHaveBeenLastCalledWith({ locale: 'pl' })
+    pending[1]()
   })
 })

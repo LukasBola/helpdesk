@@ -25,7 +25,8 @@ export function TicketPanel({ ticketId }: { ticketId: string }) {
     )
   }
 
-  if (isError) {
+  // A failed background refetch keeps the cached ticket (and any unsent reply) on screen.
+  if (isError && !ticket) {
     const notFound = isAxiosError(error) && error.response?.status === 404
     return (
       <div className={`${CARD} flex flex-col items-start gap-3`} role="alert">
@@ -42,6 +43,17 @@ export function TicketPanel({ ticketId }: { ticketId: string }) {
 
   return (
     <section aria-label={ticket.subject} className="flex flex-col gap-4">
+      {isError && (
+        <div
+          role="alert"
+          className={`${CARD} flex flex-wrap items-center justify-between gap-2 text-sm`}
+        >
+          <span>{t('tickets.refreshError')}</span>
+          <Button variant="outline" className="min-h-11" onClick={() => void refetch()}>
+            {t('common.retry')}
+          </Button>
+        </div>
+      )}
       <header className={`${CARD} flex flex-col gap-3`}>
         <div>
           <h2 className="break-words text-xl font-semibold">{ticket.subject}</h2>

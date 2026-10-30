@@ -77,7 +77,8 @@
       "status": "Status",
       "priority": "Priorytet",
       "assignee": "Przypisany do"
-    }
+    },
+    "refreshError": "Nie udało się odświeżyć ticketu."
   },
   "thread": {
     "unassigned": "Nieprzypisany",

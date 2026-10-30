@@ -22,6 +22,7 @@ export function TicketPriorityBadge({
   const { t } = useTranslation()
   return (
     <Badge
+      variant="outline"
       className={cn('border-transparent whitespace-nowrap', PRIORITY_CLASSES[priority], className)}
     >
       {t(`priority.${priority}`)}

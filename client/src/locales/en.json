@@ -77,7 +77,8 @@
       "status": "Status",
       "priority": "Priority",
       "assignee": "Assigned to"
-    }
+    },
+    "refreshError": "Could not refresh the ticket."
   },
   "thread": {
     "unassigned": "Unassigned",
