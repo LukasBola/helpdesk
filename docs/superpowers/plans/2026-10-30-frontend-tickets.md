@@ -44,7 +44,7 @@ server/
 └── src/
     ├── app.ts                                        # + /api/users
     ├── lib/auth.ts (+ auth.test.ts)                  # + locale additional field + validation
-    ├── services/ticketService.ts (+ test)            # assigneeId=none, priority tie-break, recordChanges, createReply
+    ├── services/ticketService.ts (+ test)            # assigneeId=none, priority tie-break, createReply
     ├── services/userService.ts (+ test)              # listUsers
     ├── routes/tickets.ts (+ test)                    # + POST /:id/replies
     └── routes/users.ts (+ test)                      # GET /
@@ -123,8 +123,7 @@ it('priority sort lists older tickets first within the same priority', async () 
 **Interfaces:**
 
 - Produces (service):
-  - `recordChanges(tx: Prisma.TransactionClient, current: Ticket, fields: UpdateFields, actorId: string): Promise<void>` — the history-building block extracted from `updateTicket` (which now calls it). Writes `TicketHistory` rows for changed fields only.
-  - `createReply(ticketId: string, body: string, actorId: string): Promise<ReplyWithUser | null>` — `null` when the ticket doesn't exist. One `prisma.$transaction`: create `Reply`; if `status === 'OPEN'`, update to `IN_PROGRESS` and `recordChanges(...)`. Returns the reply with `user: { id, name }`.
+  - `createReply(ticketId: string, body: string, actorId: string): Promise<ReplyWithUser | null>` — `null` when the ticket doesn't exist. One `prisma.$transaction`: check the ticket exists; create `Reply`; then a **conditional** update `tx.ticket.updateMany({ where: { id: ticketId, status: 'OPEN' }, data: { status: 'IN_PROGRESS' } })` and write the `TicketHistory` row (`field: 'status'`, `OPEN` → `IN_PROGRESS`, `userId: actorId`) **only when `count === 1`**. Never read the status and decide in JS: the `WHERE` lets Postgres settle races (a concurrent RESOLVED is not overwritten; two concurrent replies produce one history row). Returns the reply with `user: { id, name }`. `updateTicket` stays as it is.
   - `export const REPLY_MAX_LENGTH = 10_000`
 - Produces (HTTP): `POST /api/tickets/:id/replies`, body `{ body: string }` → `201` with `{ id, ticketId, body, sentAt, resendId: null, user: { id, name } }`; `422` for empty/whitespace/too long/missing body; `404` unknown ticket; `401` without session (router-level `requireAuth`).
 
@@ -150,6 +149,13 @@ it('saves the reply and moves an OPEN ticket to IN_PROGRESS with a history entry
 it('does not change a status other than OPEN', async () => {
   /* RESOLVED ticket → stays RESOLVED, no new history row */
 })
+it('two concurrent replies to an OPEN ticket create two replies but one status history row', async () => {
+  await Promise.all([post(openId2, 'A'), post(openId2, 'B')])
+  expect(await prisma.reply.count({ where: { ticketId: openId2 } })).toBe(2)
+  expect(await prisma.ticketHistory.count({ where: { ticketId: openId2, field: 'status' } })).toBe(
+    1,
+  )
+})
 it.each([[''], ['   '], ['x'.repeat(10_001)], [undefined]])(
   'rejects body %j with 422',
   async body => {
@@ -172,7 +178,7 @@ it('the automatic status history is never older than its reply', async () => {
 ```
 
 - [ ] **Step 2: Run** `pnpm --filter server test tickets` — expect FAIL (404 route missing).
-- [ ] **Step 3: Implement** `recordChanges` (refactor, `updateTicket` tests must stay green), `createReply`, the zod schema `z.object({ body: z.string().trim().min(1).max(REPLY_MAX_LENGTH) })` and the route.
+- [ ] **Step 3: Implement** `createReply`, the zod schema `z.object({ body: z.string().trim().min(1).max(REPLY_MAX_LENGTH) })` and the route.
 - [ ] **Step 4: Run** `pnpm --filter server test` — expect PASS. Atomicity comes from the single `$transaction` (reply, status and history); the reviewer checks no write happens outside it.
 - [ ] **Step 5: Commit** `feat(server): save ticket replies to the thread (no email yet)`
 
@@ -315,7 +321,7 @@ it('switches the login page to English', async () => {
 **Files:**
 
 - Create: `client/src/hooks/useCurrentUser.ts`, `client/src/hooks/useLanguage.ts` (+ test), `client/src/components/layout/PageTitle.tsx`
-- Modify: `AppShell.tsx` (+ test), `UserMenu.tsx`, `PlaceholderPage.tsx`, `NotFoundPage.tsx`, `e2e/pages/AppShell.ts` only if a locator breaks
+- Modify: `AppShell.tsx` (+ test), `UserMenu.tsx`, `PlaceholderPage.tsx`, `NotFoundPage.tsx`, `client/src/test/render.tsx`, `ProtectedRoute.test.tsx`, `LoginPage.test.tsx`, `e2e/pages/AppShell.ts` only if a locator breaks
 
 **Interfaces:**
 
@@ -323,9 +329,11 @@ it('switches the login page to English', async () => {
   - `useCurrentUser(): SessionUser` — throws if called outside a signed-in tree (only used under `ProtectedRoute`). `getActiveUser` stays the single source of "active".
   - `useLanguageSync(locale: SessionUser['locale']): void` — effect with deps `[locale]` only: if `locale` is `'pl' | 'en'` and differs from `currentLanguage()`, call `i18n.changeLanguage(locale)`. Called once in `AppShell`.
   - `useChangeLanguage(): { change: (lng: AppLanguage) => Promise<void>; error: boolean }` — changes the language immediately, then `await updateUser({ locale: lng })`; sets `error` on failure (language stays changed). Used by the switcher in `UserMenu` (pass as `onChange`).
-  - `PageTitleProvider` (wraps the AppShell outlet) and `usePageTitle(title: string): void` — the shell header renders the title as the page's only `<h1>`, and sets `document.title = \`${title} · helpdesk\``. The greeting line (`Dzień dobry,`+ first name) stays in the header.`PlaceholderPage`no longer renders its own`<h1>`.
+  - `PageTitleProvider` (wraps the AppShell outlet) and `usePageTitle(title: string): void` — the shell header renders the title as the page's only `<h1>` and sets `document.title` to `<title> · helpdesk`. The greeting line (`Dzień dobry,` + first name) stays in the header. `PlaceholderPage` no longer renders its own `<h1>`.
+  - `client/src/test/render.tsx` exports `authClientMock()`: the factory every test passes to `vi.mock('@/lib/auth-client', () => authClientMock())`, returning `useSession`, `signIn: { email }`, `signOut`, `updateUser`, `refreshSession` as `vi.fn()`s. `AppShell.test.tsx`, `ProtectedRoute.test.tsx` and `LoginPage.test.tsx` switch to it, so a new export in `auth-client.ts` never breaks three files at once. `mockSession`'s default user gains `locale: null`.
 
-- [ ] **Step 1: Write failing tests** in `useLanguage.test.tsx` (mock `@/lib/auth-client` incl. `updateUser`):
+- [ ] **Step 0: Refactor test mocks** to `authClientMock()` (above); run `pnpm --filter client test` — all existing tests PASS before any new code.
+- [ ] **Step 1: Write failing tests** in `useLanguage.test.tsx` (using `authClientMock()`):
 
 ```ts
 it('applies the account language when the session arrives', async () => {
@@ -487,14 +495,22 @@ export interface TicketFilters {
   sort: SortKey // URL `sort`, default 'oldest'
 }
 export function parseFilters(params: URLSearchParams, defaultAssignee: 'all' | 'me'): TicketFilters
-export function serializeFilters(filters: TicketFilters): URLSearchParams // omits status=OPEN, sort=oldest, empty search, null priority, assignee=all
+export function serializeFilters(
+  filters: TicketFilters,
+  defaultAssignee: 'all' | 'me',
+): URLSearchParams
+// omits status=OPEN, sort=oldest, empty search, null priority, and assignee only when it equals defaultAssignee
+// (so on /tickets/mine, "all" is written explicitly as assignee=all)
+export function ticketPath(id: string, filters: TicketFilters): string // `/tickets/<id>?…`, serialized with default 'all'
+export function listPath(filters: TicketFilters): string
+// assignee 'me' → `/tickets/mine?…` (serialized with default 'me'), otherwise `/tickets?…` (default 'all')
 export function toListQuery(filters: TicketFilters, currentUserId: string): Record<string, string>
 // status 'all' → omitted; assignee 'me' → currentUserId, 'none' → 'none', 'all' → omitted;
 // sort oldest → orderBy=createdAt&order=asc, newest → createdAt/desc, priority → priority/desc
 ```
 
 - Produces (hooks), query keys: `['tickets', 'list', query]`, `['tickets', 'detail', id]`, `['users']`:
-  - `useTicketList(query: Record<string, string>)` — `useInfiniteQuery`, `initialPageParam: 1`, `getNextPageParam: (last) => last.page * last.limit < last.total ? last.page + 1 : undefined`, limit 25.
+  - `useTicketList(query: Record<string, string>)` — `useInfiniteQuery`, `initialPageParam: 1`, `getNextPageParam: (last) => last.page * last.limit < last.total ? last.page + 1 : undefined`, limit 25. Returns the query plus `tickets: TicketListItem[]`: pages flattened and **deduplicated by `id`** (first occurrence wins), because offset paging repeats a row when a new ticket arrives between pages.
   - `useTicket(id: string | undefined)` — disabled without id.
   - `useUpdateTicket(id)` and `useCreateReply(id)` — mutations; on success invalidate `['tickets']` (list + detail by prefix).
   - `useUsers()` — `staleTime: 5 * 60_000`.
@@ -520,6 +536,18 @@ it('falls back to defaults for invalid values', () => {
 it('round-trips through the URL', () => {
   /* serialize(parse(x)) for status=all&priority=URGENT&assignee=none&search=faktura&sort=priority */
 })
+it('on /tickets/mine, choosing "all" survives the URL round-trip', () => {
+  const all = { ...parseFilters(new URLSearchParams(''), 'me'), assignee: 'all' as const }
+  const params = serializeFilters(all, 'me')
+  expect(params.get('assignee')).toBe('all')
+  expect(parseFilters(params, 'me').assignee).toBe('all')
+})
+it('listPath sends "me" back to /tickets/mine and keeps the other filters', () => {
+  expect(listPath({ ...defaults, assignee: 'me', priority: 'URGENT' })).toBe(
+    '/tickets/mine?priority=URGENT',
+  )
+  expect(ticketPath('t1', { ...defaults, assignee: 'me' })).toBe('/tickets/t1?assignee=me')
+})
 it('toListQuery maps me/none/all and sort keys', () => {
   expect(
     toListQuery(
@@ -530,7 +558,7 @@ it('toListQuery maps me/none/all and sort keys', () => {
 })
 ```
 
-and `useTickets.test.tsx`: `it('requests the next page only while page * limit < total')`, `it('invalidates the list and detail after a reply')`.
+and `useTickets.test.tsx`: `it('requests the next page only while page * limit < total')`, `it('invalidates the list and detail after a reply')`, `it('drops a ticket repeated on the next page')`.
 
 - [ ] **Step 2: Run** — FAIL. **Step 3: Implement.** **Step 4: Run** `pnpm --filter client test && pnpm typecheck` — PASS.
 - [ ] **Step 5: Commit** `feat(client): ticket API types, query hooks and URL filter codec`
@@ -549,9 +577,9 @@ and `useTickets.test.tsx`: `it('requests the next page only while page * limit <
 - Consumes: Task 8 hooks/codec, Task 7 badges/formatters, Task 6 `useCurrentUser`, `usePageTitle`.
 - Produces:
   - Routes inside `AppShell`: `/tickets` → `<TicketsPage defaultAssignee="all" />`, `/tickets/:id` → same, `/tickets/mine` → `<TicketsPage defaultAssignee="me" />`. Page title: `nav.tickets` or `nav.mine` (heading text `Tickety` / `Moje`).
-  - `TicketsPage` reads `:id` and the query string, renders `<TicketList>` left and `<TicketPanel ticketId={id}>` (Task 10; until then an empty placeholder with `tickets.selectPrompt`) right. Clicking a row navigates to `/tickets/<id>?<serializeFilters(filters)>`; filter changes `replace` the query string and keep the `:id` path.
-  - Layout: `lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]`. Below `lg`: with `:id` only the panel is shown (with a back link `lg:hidden` to the list path + current filters); without `:id` only the list.
-  - `TicketFilters`: status select (4 statuses + all), priority select (4 + any), assignee select (`all`, `me`, `none`, then non-blocked users from `useUsers`), search input (300 ms debounce, `type="search"`), sort select (oldest/newest/priority).
+  - `TicketsPage` reads `:id` and the query string, renders `<TicketList>` left and `<TicketPanel ticketId={id}>` (Task 10; until then an empty placeholder with `tickets.selectPrompt`) right. Clicking a row navigates to `ticketPath(id, filters)`; filter changes `replace` the query string (serialized with the page's `defaultAssignee`) and keep the current path.
+  - Layout: `lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]`. Below `lg`: with `:id` only the panel is shown (with a back link `lg:hidden` to `listPath(filters)`, so a ticket opened from Moje returns to `/tickets/mine`); without `:id` only the list.
+  - `TicketFilters`: status select (4 statuses + all), priority select (4 + any), assignee select (`all`, `me`, `none`, then non-blocked users from `useUsers`; a blocked user appears only when they are the current value, like in `TicketControls`), search input (300 ms debounce, `type="search"`), sort select (oldest/newest/priority).
   - `TicketRow`: age (`formatAge`), subject (truncate), `customerName ?? customerEmail`, priority badge, assignee initials or nothing; selected row has `aria-current="true"` and the accent background; whole row is a link (≥ 44 px).
   - States: loading skeleton rows; error with `common.retry` button (`refetch`); empty with `tickets.empty` + `tickets.clearFilters` (navigates to the path without query); `tickets.loadMore` button while `hasNextPage`.
 
@@ -577,6 +605,8 @@ it('on /tickets/mine filters by the current user', async () => {
 it('offers Unassigned and non-blocked agents in the assignee filter', async () => {
   /* blocked user absent */
 })
+it('shows a blocked agent selected via the URL as the current filter value', async () => {})
+it('back link from a ticket opened in Moje returns to /tickets/mine', async () => {})
 it('keeps filters in the URL when a ticket is opened', async () => {
   /* after click, location is /tickets/t1?priority=URGENT */
 })
@@ -656,17 +686,21 @@ it('renders HTML in a message as text', async () => {
 
 **Interfaces:**
 
-- Fixtures add: user `e2e-locale@helpdesk.local` (`Lucyna Język`, AGENT, key `locale`) used only by the language test; tickets `reply` (`E2E Do odpowiedzi`, OPEN, MEDIUM) and `ui-assign` (`E2E Do przypisania w UI`, OPEN, LOW). Tests locate tickets via the search filter (the dev DB may hold older non-e2e tickets).
+- Fixtures add: user `e2e-locale@helpdesk.local` (`Lucyna Język`, AGENT, key `locale`) used only by the language test; tickets `api-reply` (`E2E API odpowiedź`, OPEN, MEDIUM), `ui-reply` (`E2E Do odpowiedzi`, OPEN, MEDIUM) and `ui-assign` (`E2E Do przypisania w UI`, OPEN, LOW). **One mutating test per ticket:** the API reply test uses only `api-reply`, the UI reply test only `ui-reply`, the assign test only `ui-assign` (the suite is `fullyParallel` with retries on CI). UI tests locate tickets via search with `status=all`, so a retry finds a ticket the first attempt already moved to W toku; assertions must hold on a retry (the history line from attempt 1 still counts).
 - `TicketsPage` POM: `goto(query?)`, `search(text)`, `row(subject)`, `open(subject)`, `statusSelect`, `prioritySelect`, `assigneeSelect`, `reply(text)`, `thread`, `backToList`.
 
 - [ ] **Step 1: Write the specs**:
-  - API: `POST /api/tickets/:id/replies` → 201 and status `IN_PROGRESS`; empty body → 422; `GET /api/tickets?assigneeId=none` returns only unassigned; `GET /api/users` as agent → 200 with the 5 public fields; unauthenticated → 401.
-  - UI (`tickets.spec.ts`, agent storage state): search `E2E Do odpowiedzi` → open → reply `Dzień dobry, sprawdzamy.` → status control shows `W toku`, the reply bubble and the line `Adam Agent · Status: Otwarty → W toku` appear, URL still `/tickets/<id>?…`; assign `E2E Do przypisania w UI` to `Ewa Admin` → history line visible; `?priority=URGENT&status=all` + reload → filters and selection restored; mobile viewport 390×844: list → ticket → back keeps the query string.
+  - API (on `api-reply`): `POST /api/tickets/:id/replies` → 201 and status `IN_PROGRESS`; empty body → 422; `GET /api/tickets?assigneeId=none` returns only unassigned; `GET /api/users` as agent → 200 with the 5 public fields; unauthenticated → 401.
+  - UI (`tickets.spec.ts`, agent storage state): `?status=all`, search `E2E Do odpowiedzi` → open → reply `Dzień dobry, sprawdzamy.` → status control shows `W toku`, the reply bubble and the line `Adam Agent · Status: Otwarty → W toku` appear, URL still `/tickets/<id>?…`; assign `E2E Do przypisania w UI` to `Ewa Admin` → history line visible; `?priority=URGENT&status=all` + reload → filters and selection restored; mobile viewport 390×844: list → ticket → back keeps the query string.
   - Language (`language.spec.ts`, fresh context, `locale` user): log in (PL) → user menu → `EN` → header shows `Good morning,` → log out → login page in English → new browser context (empty storage) → log in → UI in English (from the account).
 - [ ] **Step 2: Run** `pnpm e2e` (dev server reused or started by Playwright) — expect PASS for the whole suite, including the pre-existing specs.
 - [ ] **Step 3: Commit** `test(e2e): ticket inbox, replies, assignment and language persistence`
 
 ---
+
+## Known limitation (out of scope)
+
+`updateTicket` (PATCH) reads the ticket and writes without a version check, so two agents editing at once can overwrite each other (lost update). Plan 06 does not change it; optimistic locking (`updatedAt` in PATCH) is a candidate for a later plan.
 
 ## Done when
 
