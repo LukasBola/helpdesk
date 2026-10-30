@@ -91,6 +91,62 @@ describe('listTickets pagination', () => {
   )
 })
 
+describe('listTickets unassigned filter and priority tie-break', () => {
+  const PREFIX = 'svc-unassigned-'
+  let unassignedId: string
+  let assignedId: string
+  let olderId: string
+  let newerId: string
+
+  beforeAll(async () => {
+    const mk = (key: string, extra: object = {}) =>
+      prisma.ticket.create({
+        data: {
+          messageId: `${PREFIX}${key}@test.com`,
+          customerEmail: 'unassigned@test.com',
+          subject: `Unassigned ${key}`,
+          body: 'body',
+          ...extra,
+        },
+      })
+    unassignedId = (await mk('free')).id
+    assignedId = (await mk('taken', { assigneeId: 'user-system' })).id
+    newerId = (
+      await mk('newer', { priority: 'URGENT', createdAt: new Date('2026-01-02T00:00:00Z') })
+    ).id
+    olderId = (
+      await mk('older', { priority: 'URGENT', createdAt: new Date('2026-01-01T00:00:00Z') })
+    ).id
+  })
+
+  afterAll(async () => {
+    await prisma.ticket.deleteMany({ where: { messageId: { startsWith: PREFIX } } })
+  })
+
+  it('assigneeId "none" returns only unassigned tickets', async () => {
+    const { tickets } = await listTickets({ assigneeId: 'none', limit: 100 })
+    expect(tickets.every(t => t.assigneeId === null)).toBe(true)
+    const ids = tickets.map(t => t.id)
+    expect(ids).toContain(unassignedId)
+    expect(ids).not.toContain(assignedId)
+  })
+
+  it.each(['asc', 'desc'] as const)(
+    'priority sort (%s) lists older tickets first within the same priority',
+    async order => {
+      const { tickets } = await listTickets({
+        orderBy: 'priority',
+        order,
+        priority: 'URGENT',
+        limit: 100,
+      })
+      const ids = tickets.map(t => t.id)
+      expect(ids.indexOf(olderId)).toBeGreaterThanOrEqual(0)
+      expect(ids.indexOf(olderId)).toBeLessThan(ids.indexOf(newerId))
+    },
+  )
+})
+
 describe('findTicketById', () => {
   it('returns ticket with history', async () => {
     const ticket = await findTicketById(ticketId)

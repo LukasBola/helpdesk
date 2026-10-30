@@ -23,7 +23,7 @@ export async function listTickets(opts: ListOptions) {
 
   if (opts.status) where.status = opts.status
   if (opts.priority) where.priority = opts.priority
-  if (opts.assigneeId) where.assigneeId = opts.assigneeId
+  if (opts.assigneeId) where.assigneeId = opts.assigneeId === 'none' ? null : opts.assigneeId
   if (opts.search) {
     const search = escapeLike(opts.search)
     where.OR = [
@@ -37,14 +37,19 @@ export async function listTickets(opts: ListOptions) {
   const limit = opts.limit ?? 25
   const skip = (page - 1) * limit
 
+  const field = opts.orderBy ?? 'createdAt'
+  const order = opts.order ?? 'desc'
+  // id breaks ties, so offset pagination never repeats or skips rows.
+  // Within one priority, the oldest ticket comes first regardless of direction.
+  const orderBy: Prisma.TicketOrderByWithRelationInput[] =
+    field === 'priority'
+      ? [{ priority: order }, { createdAt: 'asc' }, { id: 'asc' }]
+      : [{ [field]: order }, { id: order }]
+
   const [tickets, total] = await prisma.$transaction([
     prisma.ticket.findMany({
       where,
-      // id breaks ties, so offset pagination never repeats or skips rows.
-      orderBy: [
-        { [opts.orderBy ?? 'createdAt']: opts.order ?? 'desc' },
-        { id: opts.order ?? 'desc' },
-      ],
+      orderBy,
       skip,
       take: limit,
       include: { assignee: { select: { id: true, name: true, email: true } } },
