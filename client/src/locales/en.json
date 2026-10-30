@@ -68,10 +68,34 @@
       "oldest": "Oldest first",
       "newest": "Newest first",
       "priority": "Priority"
+    },
+    "notFound": "Ticket not found",
+    "panelLoading": "Loading ticket",
+    "panelError": "Could not load the ticket.",
+    "thread": "Ticket thread",
+    "control": {
+      "status": "Status",
+      "priority": "Priority",
+      "assignee": "Assigned to"
     }
   },
-  "thread": {},
-  "reply": {},
+  "thread": {
+    "unassigned": "Unassigned",
+    "unknownUser": "unknown user",
+    "customer": "Customer",
+    "empty": "No messages",
+    "history": {
+      "status": "{{user}} · Status: {{from}} → {{to}}",
+      "priority": "{{user}} · Priority: {{from}} → {{to}}",
+      "assignee": "{{user}} · Assignment: {{from}} → {{to}}"
+    }
+  },
+  "reply": {
+    "label": "Reply",
+    "placeholder": "Write a reply…",
+    "send": "Send",
+    "threadOnlyNote": "For now the reply is saved to the thread only — the customer won't get an email."
+  },
   "status": {
     "OPEN": "Open",
     "IN_PROGRESS": "In progress",

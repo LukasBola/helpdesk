@@ -68,10 +68,34 @@
       "oldest": "Najstarsze",
       "newest": "Najnowsze",
       "priority": "Priorytet"
+    },
+    "notFound": "Nie znaleziono ticketu",
+    "panelLoading": "Wczytywanie ticketu",
+    "panelError": "Nie udało się wczytać ticketu.",
+    "thread": "Wątek ticketu",
+    "control": {
+      "status": "Status",
+      "priority": "Priorytet",
+      "assignee": "Przypisany do"
     }
   },
-  "thread": {},
-  "reply": {},
+  "thread": {
+    "unassigned": "Nieprzypisany",
+    "unknownUser": "nieznany użytkownik",
+    "customer": "Klient",
+    "empty": "Brak wiadomości",
+    "history": {
+      "status": "{{user}} · Status: {{from}} → {{to}}",
+      "priority": "{{user}} · Priorytet: {{from}} → {{to}}",
+      "assignee": "{{user}} · Przypisanie: {{from}} → {{to}}"
+    }
+  },
+  "reply": {
+    "label": "Odpowiedź",
+    "placeholder": "Napisz odpowiedź…",
+    "send": "Wyślij",
+    "threadOnlyNote": "Odpowiedź trafia na razie tylko do wątku — klient nie dostanie maila."
+  },
   "status": {
     "OPEN": "Otwarty",
     "IN_PROGRESS": "W toku",

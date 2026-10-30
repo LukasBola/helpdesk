@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { usePageTitle } from '@/components/layout/PageTitle'
 import { TicketFilters } from '@/components/tickets/TicketFilters'
 import { TicketList } from '@/components/tickets/TicketList'
+import { TicketPanel } from '@/components/tickets/TicketPanel'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useTicketList } from '@/hooks/useTickets'
 import {
@@ -60,10 +61,13 @@ export function TicketsPage({ defaultAssignee }: { defaultAssignee: 'all' | 'me'
             {t('tickets.back')}
           </Link>
         )}
-        {/* Task 10 replaces this placeholder with <TicketPanel ticketId={id} />. */}
-        <div className="flex min-h-64 items-center justify-center rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-soft">
-          {t('tickets.selectPrompt')}
-        </div>
+        {id ? (
+          <TicketPanel ticketId={id} />
+        ) : (
+          <div className="flex min-h-64 items-center justify-center rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-soft">
+            {t('tickets.selectPrompt')}
+          </div>
+        )}
       </section>
     </div>
   )
