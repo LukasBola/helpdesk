@@ -101,4 +101,66 @@ describe('PATCH /api/tickets/:id', () => {
       .send({ assigneeId: 'not-a-valid-id' })
     expect(res.status).toBe(422)
   })
+
+  it('returns 422 when assigneeId is a valid cuid of a non-existent user', async () => {
+    const res = await request(app)
+      .patch(`/api/tickets/${ticketId}`)
+      .set('Cookie', cookie)
+      .send({ assigneeId: 'cjld2cjxh0000qzrmn831i7rn' })
+    expect(res.status).toBe(422)
+    expect(res.body).toEqual({ error: 'Unknown assignee' })
+  })
+
+  it('returns 400 for a malformed JSON body', async () => {
+    const res = await request(app)
+      .patch(`/api/tickets/${ticketId}`)
+      .set('Cookie', cookie)
+      .set('Content-Type', 'application/json')
+      .send('{"status":')
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ error: 'Invalid JSON body' })
+  })
+
+  it('returns 422 when assigning a blocked user', async () => {
+    const blocked = await createCredentialUser({
+      email: 'blocked-assignee@test.com',
+      password: 'password123',
+      name: 'Blocked',
+    })
+    await prisma.user.update({ where: { id: blocked.id }, data: { isBlocked: true } })
+    const res = await request(app)
+      .patch(`/api/tickets/${ticketId}`)
+      .set('Cookie', cookie)
+      .send({ assigneeId: blocked.id })
+    expect(res.status).toBe(422)
+    expect(res.body).toEqual({ error: 'Assignee is blocked' })
+    await prisma.user.delete({ where: { id: blocked.id } })
+  })
+})
+
+describe('GET /api/tickets edge cases', () => {
+  it('returns an empty page (not an error) beyond the last page', async () => {
+    const res = await request(app)
+      .get('/api/tickets')
+      .query({ page: 1000, limit: 100 })
+      .set('Cookie', cookie)
+    expect(res.status).toBe(200)
+    expect(res.body.tickets).toEqual([])
+    expect(res.body.total).toBeGreaterThan(0)
+  })
+
+  it('returns an empty page (not 500) for an absurdly large page', async () => {
+    const res = await request(app)
+      .get('/api/tickets')
+      .query({ page: '100000000000' })
+      .set('Cookie', cookie)
+    expect(res.status).toBe(200)
+    expect(res.body.tickets).toEqual([])
+  })
+
+  it.each(['%', '_'])('treats %s in search as a literal character', async ch => {
+    const res = await request(app).get('/api/tickets').query({ search: ch }).set('Cookie', cookie)
+    expect(res.status).toBe(200)
+    expect(res.body.total).toBe(0)
+  })
 })

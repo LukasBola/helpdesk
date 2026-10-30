@@ -3,7 +3,12 @@ import { Router } from 'express'
 import { z } from 'zod'
 
 import { requireAuth } from '../middleware/auth'
-import { findTicketById, listTickets, updateTicket } from '../services/ticketService'
+import {
+  findTicketById,
+  InvalidAssigneeError,
+  listTickets,
+  updateTicket,
+} from '../services/ticketService'
 
 const router = Router()
 
@@ -68,6 +73,10 @@ router.patch('/:id', async (req, res, next: NextFunction) => {
     }
     res.json(ticket)
   } catch (err) {
+    if (err instanceof InvalidAssigneeError) {
+      res.status(422).json({ error: err.message })
+      return
+    }
     next(err)
   }
 })

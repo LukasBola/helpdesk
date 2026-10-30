@@ -12,8 +12,13 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "pnpm --filter server typecheck && pnpm --filter client typecheck",
-    "prepare": "husky"
+    "typecheck": "pnpm --filter server typecheck && pnpm --filter client typecheck && tsc -p e2e/tsconfig.json",
+    "prepare": "husky",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "e2e:headed": "E2E_SLOWMO=400 playwright test -c e2e/playwright.config.ts --headed --workers=1",
+    "e2e:ui": "playwright test -c e2e/playwright.config.ts --ui",
+    "e2e:report": "playwright show-report e2e/playwright-report",
+    "e2e:install": "playwright install chromium firefox webkit"
   },
   "license": "ISC",
   "engines": {
@@ -30,6 +35,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^22.19.18",
     "concurrently": "^8.2.2",
     "eslint": "^10.3.0",
     "eslint-plugin-react": "^7.37.5",
@@ -39,6 +46,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.2",
     "prettier": "^3.8.3",
+    "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.2"
   }
 }

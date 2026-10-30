@@ -39,6 +39,14 @@ export default {
           foreground: 'hsl(var(--card-foreground))',
         },
       },
+      backgroundImage: {
+        app: 'linear-gradient(135deg, #eef2ff, #f0fdfa)',
+        brand: 'linear-gradient(135deg, #6366f1, #14b8a6)',
+      },
+      boxShadow: {
+        soft: '0 4px 20px rgba(79, 70, 229, 0.08)',
+        card: '0 10px 40px rgba(79, 70, 229, 0.12)',
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',

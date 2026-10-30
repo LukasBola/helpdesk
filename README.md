@@ -83,15 +83,16 @@ pnpm dev
 
 ### Environment variables
 
-| Variable                 | Required           | Description                                     |
-| ------------------------ | ------------------ | ----------------------------------------------- |
-| `DATABASE_URL`           | Yes                | PostgreSQL connection string                    |
-| `BETTER_AUTH_SECRET`     | Yes                | Min 32 characters, used to sign session cookies |
-| `BETTER_AUTH_URL`        | Yes                | Backend base URL, e.g. `http://localhost:3000`  |
-| `ANTHROPIC_API_KEY`      | For AI features    | Claude API key                                  |
-| `POSTMARK_WEBHOOK_TOKEN` | For inbound email  | Postmark webhook validation token               |
-| `RESEND_API_KEY`         | For outbound email | Resend API key for sending replies              |
-| `PORT`                   | No                 | Backend port, defaults to `3000`                |
+| Variable                 | Required           | Description                                                                                    |
+| ------------------------ | ------------------ | ---------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | Yes                | PostgreSQL connection string                                                                   |
+| `BETTER_AUTH_SECRET`     | Yes                | Min 32 characters, used to sign session cookies                                                |
+| `BETTER_AUTH_URL`        | Yes                | Backend base URL, e.g. `http://localhost:3000`                                                 |
+| `CLIENT_URL`             | Production only    | Frontend origin trusted by Better Auth; defaults to `http://localhost:5173` outside production |
+| `ANTHROPIC_API_KEY`      | For AI features    | Claude API key                                                                                 |
+| `POSTMARK_WEBHOOK_TOKEN` | For inbound email  | Postmark webhook validation token                                                              |
+| `RESEND_API_KEY`         | For outbound email | Resend API key for sending replies                                                             |
+| `PORT`                   | No                 | Backend port, defaults to `3000`                                                               |
 
 ## Testing
 
@@ -110,6 +111,26 @@ pnpm --filter server test:watch
 ```
 
 Server integration tests spin up a real PostgreSQL instance via testcontainers — Docker must be running.
+
+### End-to-end (Playwright)
+
+The suite in `e2e/` runs against the real app (`pnpm dev`, started automatically if not running) and the local database (`docker compose up -d`). Global setup recreates the e2e users (`e2e-*@helpdesk.local`, password `e2e-password-123`, override with `E2E_PASSWORD`) and fixture tickets via `pnpm --filter server e2e:fixtures seed`.
+
+Two projects:
+
+- `chromium`: UI tests in `e2e/tests/` (Chrome only; Firefox/WebKit are installed but not used).
+- `api`: frontend↔backend contract tests in `e2e/api/`. HTTP calls go to `http://localhost:5173/api/*`, through the Vite proxy, with the browser's `Origin` header.
+
+```bash
+pnpm e2e:install             # one-time: download Chromium, Firefox and WebKit
+pnpm e2e                     # everything, headless
+pnpm e2e --project=api       # API tests only
+pnpm e2e:headed              # watch the browser (slowed down by E2E_SLOWMO=400 ms)
+pnpm e2e:ui                  # Playwright UI mode
+pnpm e2e:report              # open the last HTML report
+```
+
+Structure: `e2e/pages/` holds the page objects (`LoginPage`, `AppShell`), `e2e/fixtures/` the users, tickets, API helpers and DB helpers (block/unblock a user). `e2e/tests/auth.setup.ts` logs in once per role and saves the session in `e2e/.auth/`. Reporters: list (console), HTML (`e2e/playwright-report/`), JUnit (`e2e/test-results/junit.xml`).
 
 ## Code Quality
 

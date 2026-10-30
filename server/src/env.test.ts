@@ -69,4 +69,29 @@ describe('env', () => {
     vi.stubEnv('BETTER_AUTH_URL', 'not-a-url')
     await expect(import('./env')).rejects.toThrow()
   })
+
+  function stubBase(nodeEnv: string, clientUrl: string) {
+    vi.stubEnv('DATABASE_URL', 'postgresql://u:p@localhost:5432/db')
+    vi.stubEnv('BETTER_AUTH_SECRET', 'b'.repeat(32))
+    vi.stubEnv('BETTER_AUTH_URL', 'http://localhost:3000')
+    vi.stubEnv('NODE_ENV', nodeEnv)
+    vi.stubEnv('CLIENT_URL', clientUrl)
+  }
+
+  it('defaults CLIENT_URL to the Vite origin outside production', async () => {
+    stubBase('development', '')
+    const { env } = await import('./env')
+    expect(env.CLIENT_URL).toBe('http://localhost:5173')
+  })
+
+  it('requires CLIENT_URL in production', async () => {
+    stubBase('production', '')
+    await expect(import('./env')).rejects.toThrow()
+  })
+
+  it('accepts an explicit CLIENT_URL in production', async () => {
+    stubBase('production', 'https://helpdesk.example.com')
+    const { env } = await import('./env')
+    expect(env.CLIENT_URL).toBe('https://helpdesk.example.com')
+  })
 })

@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { prisma } from '../db'
+import { env } from '../env'
 import { auth } from './auth'
 import { createCredentialUser } from './users'
 
@@ -74,5 +75,24 @@ describe('auth.api.signUpEmail', () => {
     ).rejects.toMatchObject({ status: 'BAD_REQUEST' })
 
     expect(await prisma.user.count({ where: { email: SIGNUP } })).toBe(0)
+  })
+})
+
+describe('trustedOrigins', () => {
+  it('trusts the client origin', () => {
+    expect(auth.options.trustedOrigins).toContain(env.CLIENT_URL)
+  })
+})
+
+describe('sign-in errors', () => {
+  it('returns the same error for a wrong password and a blocked account', async () => {
+    const wrong = await auth.api
+      .signInEmail({ body: { email: ACTIVE, password: 'wrong-password' } })
+      .catch(e => e)
+    const blocked = await auth.api
+      .signInEmail({ body: { email: BLOCKED, password: PASSWORD } })
+      .catch(e => e)
+    expect(blocked.status).toBe(wrong.status)
+    expect(blocked.body).toEqual(wrong.body)
   })
 })
