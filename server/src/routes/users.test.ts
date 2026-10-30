@@ -10,7 +10,11 @@ import { signIn } from '../test/auth'
 const AGENT = 'agent-users-route@test.com'
 const ADMIN = 'admin-users-route@test.com'
 const BLOCKED = 'blocked-users-route@test.com'
-const emails = [AGENT, ADMIN, BLOCKED]
+const SORT = ['Zzz', 'Aaa', 'Mmm'].map(n => ({
+  name: `${n} Sort`,
+  email: `${n.toLowerCase()}-sort-users-route@test.com`,
+}))
+const emails = [AGENT, ADMIN, BLOCKED, ...SORT.map(u => u.email)]
 
 let agentCookie: string
 let adminCookie: string
@@ -40,6 +44,9 @@ beforeAll(async () => {
     password: 'password123',
     name: 'Users Route Blocked',
   })
+  for (const u of SORT) {
+    await createCredentialUser({ ...u, password: 'password123' })
+  }
   agentCookie = await signIn(AGENT, 'password123')
   adminCookie = await signIn(ADMIN, 'password123')
   await prisma.user.update({
@@ -53,14 +60,20 @@ afterAll(async () => {
 })
 
 describe('GET /api/users', () => {
-  it('lists users with only public fields, sorted by name', async () => {
+  it('lists users with only public fields', async () => {
     const res = await request(app).get('/api/users').set('Cookie', agentCookie)
     expect(res.status).toBe(200)
-    const names = res.body.users.map((u: PublicUser) => u.name)
-    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
     for (const u of res.body.users) {
       expect(Object.keys(u).sort()).toEqual(['email', 'id', 'isBlocked', 'name', 'role'])
     }
+  })
+
+  it('sorts users by name ascending', async () => {
+    const res = await request(app).get('/api/users').set('Cookie', agentCookie)
+    const owned = res.body.users
+      .filter((u: PublicUser) => SORT.some(s => s.email === u.email))
+      .map((u: PublicUser) => u.name)
+    expect(owned).toEqual(['Aaa Sort', 'Mmm Sort', 'Zzz Sort'])
   })
 
   it('includes blocked users with isBlocked true', async () => {

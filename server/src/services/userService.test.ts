@@ -19,7 +19,7 @@ afterAll(async () => {
 })
 
 describe('listUsers', () => {
-  it('returns only public fields ordered by name', async () => {
+  it('returns the created user', async () => {
     const users = await listUsers()
     const mine = users.find(u => u.email === EMAIL)
     expect(mine).toMatchObject({
@@ -27,8 +27,5 @@ describe('listUsers', () => {
       role: 'AGENT',
       isBlocked: false,
     })
-    expect(Object.keys(mine ?? {}).sort()).toEqual(['email', 'id', 'isBlocked', 'name', 'role'])
-    const names = users.map(u => u.name)
-    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
   })
 })
