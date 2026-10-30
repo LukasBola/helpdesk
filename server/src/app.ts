@@ -5,6 +5,7 @@ import { auth } from './lib/auth'
 import { errorHandler } from './middleware/errorHandler'
 import { originCheck } from './middleware/originCheck'
 import ticketsRouter from './routes/tickets'
+import usersRouter from './routes/users'
 import webhookRouter from './routes/webhooks'
 
 export const app = express()
@@ -20,6 +21,7 @@ app.use('/api/webhooks', express.json({ limit: '10mb' }), webhookRouter)
 app.use(express.json())
 
 app.use('/api/tickets', ticketsRouter)
+app.use('/api/users', usersRouter)
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Not found' })
