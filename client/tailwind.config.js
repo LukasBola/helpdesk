@@ -4,6 +4,9 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans Variable"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -37,6 +40,26 @@ export default {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
+        },
+        status: {
+          open: 'hsl(var(--status-open))',
+          'open-fg': 'hsl(var(--status-open-fg))',
+          'in-progress': 'hsl(var(--status-in-progress))',
+          'in-progress-fg': 'hsl(var(--status-in-progress-fg))',
+          resolved: 'hsl(var(--status-resolved))',
+          'resolved-fg': 'hsl(var(--status-resolved-fg))',
+          closed: 'hsl(var(--status-closed))',
+          'closed-fg': 'hsl(var(--status-closed-fg))',
+        },
+        priority: {
+          low: 'hsl(var(--priority-low))',
+          'low-fg': 'hsl(var(--priority-low-fg))',
+          medium: 'hsl(var(--priority-medium))',
+          'medium-fg': 'hsl(var(--priority-medium-fg))',
+          high: 'hsl(var(--priority-high))',
+          'high-fg': 'hsl(var(--priority-high-fg))',
+          urgent: 'hsl(var(--priority-urgent))',
+          'urgent-fg': 'hsl(var(--priority-urgent-fg))',
         },
       },
       backgroundImage: {
