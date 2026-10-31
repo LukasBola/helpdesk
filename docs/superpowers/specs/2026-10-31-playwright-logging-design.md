@@ -1,74 +1,63 @@
 # Specyfikacja: logowanie testów Playwright
 
-**Status:** projekt do akceptacji  
-**Data:** 2026-10-31
+**Status:** zaakceptowana (wdrożona)  
+**Data:** 2026-10-31, przepisana 2026-11-01  
+**Issue:** #17  
+**ADR:** [ADR-0016](../../adr/0016-logowanie-e2e-reporter-playwright.md)
 
-## Cel i zakres
+## Cel
 
-Każdy test Playwright ma dawać czytelny na żywo obraz wykonywania w terminalu oraz osobny, uporządkowany dziennik jako załącznik do wyniku w raporcie HTML. Dziennik ma pozwolić ustalić, co rozpoczęło się przed błędem, jaki był wynik i jakie wartości porównano. Zakres obejmuje wszystkie istniejące i przyszłe testy w `e2e/`: projekty `setup`, `chromium` i `api`, ich hooki, fixture'y, metody Page Object i pomocnicze operacje wykonywane w kontekście testu. Global setup, który działa poza pojedynczym testem, ma osobny kontekst przebiegu i nie może być błędnie przypisany do konkretnego testu.
+Każdy test e2e daje na żywo w terminalu czytelny log wykonania: START/END każdego testu, hooka, kroku, akcji Playwright i asercji, z wynikiem i czasem. Ten sam log jest dołączony do każdej próby testu w raporcie HTML. Po błędzie log i podsumowanie wskazują krok lub asercję, która zawiodła, z miejscem w kodzie. Sekrety i dane osobowe nie trafiają do logu.
 
-Obecnie konfiguracja używa reporterów list, HTML i JUnit, a `fullyParallel` jest włączone. Testy używają bezpośrednich wywołań Playwright, asercji w testach i Page Objects oraz pomocniczych funkcji API i bazy. Istniejące niezapisane zmiany konfiguracji trzeba zachować. Celem nie jest zmiana zachowania aplikacji, danych testowych, liczby workerów ani semantyki testów.
+## Zasada: testy bez kodu logującego
 
-## Rozważone podejścia
+Testy, Page Objects i helpery pozostają zwykłym kodem Playwright. Logowanie realizuje wyłącznie reporter oparty na publicznym Reporter API (wzorzec Observer): `onTestBegin/onTestEnd` i `onStepBegin/onStepEnd` dostarczają każdy hook, `test.step`, akcję (`pw:api`) i asercję (`expect`) bez instrumentacji testów. Tak samo działają Allure i ReportPortal.
 
-1. **Tylko wbudowane kroki i reporter Playwright.** Najmniej kodu, lecz same zdarzenia reportera nie dostarczają wiarygodnie wszystkich oczekiwanych i rzeczywistych wartości udanych asercji ani opisów intencji.
-2. **Własny system wykonujący testy i asercje.** Dawałby pełną kontrolę, ale powielałby Playwright, zwiększał koszt utrzymania i groził zmianą auto-wait oraz retry asercji.
-3. **Zalecane: Playwright jako źródło wykonania, uzupełniony cienką warstwą logowania.** Nazwane `test.step`, fixture per test, załączniki i reporter korzystają z publicznych API Playwright. Jawne opisy operacji i adaptery asercji uzupełniają dane, których sam reporter nie udostępnia. Nie przechwytujemy niepublicznych szczegółów frameworka.
+Pierwsza wersja (Codex) owijała każdą akcję i asercję w funkcje logujące (`log.run`, `checkValue`, `checkWeb`). Została odrzucona: podwajała kod testów, dublowała kroki w raporcie i trace, a wartości „actual” dla udanych asercji web-first i tak były niedostępne. Kopia tej wersji istnieje tylko poza repozytorium.
 
-## Jednostka logowania i format
+## Format linii
 
-Zdarzenia opisują test, hook, krok, metodę pomocniczą, akcję lub asercję. Każda operacja wykonywana przez kod testów, w tym operacje w Page Objects i fixture'ach, ma czytelny opis oraz parę `START` i `END`. `END` zawiera `PASS` albo `FAIL` i czas trwania. Gdy operacja została przerwana przez timeout lub przerwanie procesu, wynik jest oznaczany odpowiednio `TIMEOUT`, `INTERRUPTED` lub `INCOMPLETE`, a nie fałszywym `PASS`. Zagnieżdżenie pokazuje relację metody do jej akcji; każda faktyczna akcja i asercja ma własne zdarzenia, nie tylko wspólny krok dla całej metody. Konstrukcja locatora i zwykłe lokalne obliczenia nie są akcjami; operacje na stronie, API, kontekście i bazie oraz oczekiwania na zdarzenia nimi są. Operacje wykonywane wewnętrznie przez sam Playwright nie wymagają ręcznej instrumentacji.
-
-Każdy wpis ma timestamp w ISO 8601 UTC, numer sekwencyjny w obrębie próby, identyfikator przebiegu, projektu i testu, numer retry, worker, identyfikator operacji i rodzica, kategorię, fazę, opis oraz, dla `END`, wynik i czas trwania. Błąd zawiera bezpieczny opis i dostępne szczegóły. Czas trwania liczony jest zegarem monotonicznym. Format załącznika to czytelny tekst UTF-8; strukturę danych można dodatkowo zachować w JSONL, jeśli pomoże to w implementacji i walidacji.
-
-Przykład schematyczny:
+Jedna linia = jedno zdarzenie, stałe kolumny:
 
 ```text
-2026-10-31T12:00:00.120Z seq=12 project=chromium test=... retry=0 worker=1 op=4 parent=2 ACTION START Kliknij „Zaloguj się”
-2026-10-31T12:00:00.200Z seq=13 project=chromium test=... retry=0 worker=1 op=4 ACTION END PASS duration=80ms
-2026-10-31T12:00:00.201Z seq=14 project=chromium test=... retry=0 worker=1 op=5 ASSERT START Nagłówek jest widoczny; expected=visible
-2026-10-31T12:00:00.235Z seq=15 project=chromium test=... retry=0 worker=1 op=5 ASSERT END PASS duration=34ms actual=visible
+czas (ISO 8601 UTC)      poziom id        faza  wynik     czas trwania rodzaj treść
+2026-11-01T10:15:02.297Z INFO  T001.S004 START -                   - ASSERT Powitanie „Dzień dobry,” jest widoczne (e2e/pages/AppShell.ts:31)
+2026-11-01T10:15:07.307Z ERROR T001.S004 END   FAIL          5010 ms ASSERT Powitanie „Dzień dobry,” jest widoczne (e2e/pages/AppShell.ts:31)
+2026-11-01T10:15:07.307Z ERROR T001.S004 ERROR -                   - ASSERT ↳ Error: … | Expected: visible | Error: element(s) not found
 ```
 
-## Asercje i wartości
+- `T001` to jedna próba testu (retry dostaje nowy numer), `T001.S004` to krok w niej. START i END mają to samo id i identyczną treść, zakończoną lokalizacją w kodzie.
+- Wyniki: `PASS`, `FAIL`, `TIMEOUT`, `INTERRUPTED`, `SKIPPED`, `INCOMPLETE` (krok bez END, np. przy timeoucie). Niedokończony krok nigdy nie jest `PASS`.
+- Poziom: `INFO`, `WARN` (pominięty), `ERROR` (porażka).
+- Global setup loguje w tym samym formacie pod id `G000`.
+- `E2E_LOG=tests` ogranicza terminal do linii testów; załącznik jest zawsze pełny.
 
-Każda asercja ma opis mówiący, co jest sprawdzane, oczekiwaną wartość lub predykat, rzeczywistą wartość oraz wynik. Dla zwykłych asercji wartości logowana jest wartość przekazana do `expect`, bez ponownego wykonania wyrażenia. Dla asercji na locatorach i stronie należy zachować natywne asercje Playwright i ich ponawianie; nie wolno zastępować ich jednorazowym odczytem zmieniającym semantykę testu. Jeśli można wiarygodnie uzyskać wartość użytą przez asercję z publicznego API, należy ją zapisać. W pozostałych przypadkach log oznacza `actual=unavailable` z przyczyną, a dostępny komunikat błędu Playwright zostaje dołączony po maskowaniu. Stan logiczny, który wynika bezpośrednio z pomyślnej asercji, np. `visible`, można tak oznaczyć; nie wolno przedstawiać dodatkowego odczytu po asercji jako wartości, którą framework rzeczywiście porównał. Dodatkowy diagnostyczny odczyt, jeśli bezpieczny i użyteczny, musi być opisany jako osobna próbka po asercji i nie może zmienić wyniku testu.
+## Opisy asercji
 
-Zachować `not`, dopasowania częściowe, wyrażenia regularne, wartości graniczne, soft assertions, timeouty i retry. Błąd asercji musi nadal powodować oryginalny wynik testu; logowanie nie może go przechwycić i ukryć. Przy asercji soft zdarzenie musi mieć wynik `FAIL`, mimo że test kontynuuje wykonanie. Asercja, która nie została rozpoczęta po wcześniejszym błędzie, nie jest raportowana jako wykonana.
+Każde `expect`, `expect.soft` i `expect.poll` w `e2e/{tests,api,pages,fixtures}` ma opis jako drugi argument, po polsku jak tytuły testów. Opis jest treścią linii ASSERT, nazwą kroku w raporcie HTML i nagłówkiem błędu. Wymusza to reguła ESLint `no-restricted-syntax` w `eslint.config.js`. Metody Page Objectów oznaczone `@step` (`e2e/pages/step.ts`, `test.step` z `box: true` i lokalizacją wywołania) są widoczne jako jeden krok, np. `LoginPage.login`.
 
-## Terminal i raporty
+## Błędy
 
-Reporter wypisuje zdarzenia natychmiast po otrzymaniu, bez czekania na koniec testu. Jedna kompletna linia to jedno zdarzenie. Przy równoległości linie różnych testów mogą przeplatać się w czasie, lecz każda zawiera identyfikator testu, projektu, workera i retry; ich treść nie może się mieszać w jednej linii. Terminal pokazuje START oraz END z wynikiem i czasem, również dla testów zakończonych błędem.
+Na końcu przebiegu dla każdego testu, który ostatecznie padł (flaky się nie liczy): id próby, najgłębszy krok, który zawiódł (id, rodzaj, treść, lokalizacja), ścieżka kroków, komenda otwierająca trace i pełny błąd Playwright (Expected/Received, call log).
 
-Każda próba testu otrzymuje własny załącznik dziennika przez publiczne API Playwright; retry nie nadpisuje poprzedniej próby. W HTML dziennik jest dostępny przy odpowiedniej próbie testu, również dla testów przechodzących. Kroki Playwright pozostają widoczne w raporcie i trace. Należy zachować działanie istniejących raportów HTML i JUnit; dostępność załączników w JUnit zależy od możliwości jego odbiorcy i nie jest równoważna prezentacji w HTML. W przypadku awarii procesu lub wymuszonego zatrzymania końcowy załącznik może nie powstać: wpisy już wyemitowane do terminala pozostają źródłem informacji, a brak END oznacza niedokończoną operację. Nie obiecywać pełnego dziennika po utracie procesu.
+## Raport HTML i trace
+
+Każda próba ma załącznik `step-log.txt` z własnym logiem, obok trace'a. Trace Viewer pokazuje te same kroki natywnie (panel Actions); dołączenie logu wewnątrz trace'a wymagałoby kodu w workerze, czyli instrumentacji testów, więc nie jest celem. Trace: `on-first-retry` w CI (zalecenie Playwright), `retain-on-failure` lokalnie (brak retry).
 
 ## Dane wrażliwe
 
-Przed emisją do terminala i zapisem załącznika centralny mechanizm maskuje hasła, tokeny, cookies, nagłówki autoryzacyjne i inne sekrety oraz dane osobowe, w tym adresy e-mail. Maskowanie obejmuje opisy, expected, actual, komunikaty błędów, URL, parametry i dane zagnieżdżone; dla nieznanych lub niemożliwych do bezpiecznej serializacji wartości stosuje bezpieczny placeholder. Nie logować pełnych body żądań ani odpowiedzi domyślnie. Maskowanie nie może zmieniać danych przekazywanych testowanej aplikacji ani samych asercji. Wbudowane trace, screenshoty, wideo i standardowe komunikaty Playwright mogą mieć własną politykę danych; nie należy twierdzić, że nowy logger je sanitizuje.
+`e2e/reporters/mask.ts` maskuje w terminalu i w `step-log.txt`: hasła i nazwiska użytkowników e2e, `POSTMARK_WEBHOOK_TOKEN`, adresy e-mail, `Bearer …` oraz wartości `token/password/cookie/authorization/api_key`. Natywne drzewo kroków w raporcie HTML i trace nie są maskowane.
 
-## Integracja i niezawodność
+## Świadomie pominięte
 
-Fixture o zasięgu testu zarządza kontekstem i buforem danej próby; jawne helpery kroków i asercji udostępniają prostą konwencję testom, Page Objects i fixture'om. Reporter obsługuje emisję na żywo i korelację zdarzeń. Szczegółowy podział odpowiedzialności i mechanizm transportu zostaną ustalone w planie po weryfikacji publicznych API i ograniczeń danej wersji Playwright. Logowanie nie może współdzielić niezabezpieczonego globalnego bufora pomiędzy testami ani powodować kolizji plików. Uwzględnić `beforeEach`, `afterEach`, fixture setup/teardown, testy pomijane, błędy konfiguracji, retry i worker restart. Hooki o zakresie całego workera i global setup są oznaczane ich faktycznym zakresem, bez przypisywania ich każdemu testowi.
+- Wartość „actual” dla udanych asercji web-first: publiczne API jej nie udostępnia. Przy porażce Playwright podaje Expected/Received.
+- Statyczna kontrola pokrycia logowania: zbędna, reporter widzi każde zdarzenie.
 
-Migracja obejmuje wszystkie istniejące wywołania w zakresie oraz konwencję dla nowych testów; sama zmiana reportera nie spełnia wymagania. Dokumentacja projektu opisze użycie, przykłady oraz sposób sprawdzenia kompletności. Tam, gdzie to praktyczne, automatyczna kontrola statyczna lub testy kontraktowe mają wykrywać niezinstrumentowane akcje i asercje, z jawnymi wyjątkami i opisem ograniczeń; nie należy zakładać, że proste wyszukiwanie tekstu zapewnia pełne pokrycie.
+## Kryteria akceptacji
 
-## Kryteria akceptacji i weryfikacja
-
-- Testy UI, API i setup oraz ich helpery mają opisane indywidualne akcje i asercje; konwencja dotyczy również hooków i fixture'ów.
-- Przykładowy przechodzący i celowo padający test pokazują na żywo pary START/END, właściwe wyniki, czasy oraz expected/actual lub jawne `unavailable`; błąd pozostaje błędem testu.
-- Test web-first potwierdza zachowanie auto-wait, a przypadki negacji i soft assertion zachowują semantykę Playwright.
-- Uruchomienie co najmniej dwóch workerów i testu z retry daje niezależne załączniki dla każdej próby, bez obcych wpisów i kolizji; linie terminala pozwalają rozróżnić testy.
-- Sprawdzone są błąd akcji, timeout, pominięcie i przerwanie, w tym uczciwe oznaczenie niekompletnych logów przy utracie procesu.
-- Sekrety i dane osobowe umieszczone kontrolnie w opisach, wartościach i błędach nie występują w nowych logach terminala ani załącznikach.
-- Istniejące raporty, trace i testy zachowują działanie; przechodzą odpowiednie kontrole typów, lint i testy walidujące mechanizm. Pełny przebieg e2e wymaga dostępnego środowiska i bazy projektu.
-
-## Otwarte ograniczenia
-
-Wymóg dokładnej wartości rzeczywistej dla każdej udanej asercji web-first może być niewykonalny przez publiczne API bez zmiany semantyki. Specyfikacja wymaga jawnego `unavailable` w takich przypadkach, zamiast zmyślania wartości. Niezależne równoczesne przebiegi mogą wpływać na wspólną bazę dev (ADR-0011); izolacja logów nie rozwiązuje izolacji danych.
-
-## Materiały źródłowe
-
-- [Reporter Playwright](https://playwright.dev/docs/api/class-reporter) — zdarzenia testów i kroków.
-- [TestInfo i załączniki](https://playwright.dev/docs/api/class-testinfo#test-info-attach).
-- [Asercje Playwright](https://playwright.dev/docs/test-assertions) — ponawianie i asercje soft.
-- [Retry i procesy workerów](https://playwright.dev/docs/test-retries).
+- Testy i Page Objects nie zawierają kodu logującego poza dekoratorem `@step`.
+- START/END na żywo dla testów, hooków, kroków, akcji i asercji, z wynikiem, czasem, id i lokalizacją; pary mają identyczną treść.
+- Soft assertion daje `FAIL` i test idzie dalej; auto-wait i `not` działają bez zmian; timeout daje `INCOMPLETE`, nie `PASS`.
+- Każda próba (także retry) ma własny `step-log.txt` w raporcie.
+- Sekrety i e-maile nie występują w logu.
+- Testy reportera (`pnpm e2e:reporter:test`) działają w CI.

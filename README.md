@@ -257,9 +257,36 @@ pnpm e2e:report              # open the last HTML report
 
 `E2E_HEADLESS` accepts `true` or `false`; the example `.env` sets it to `false`, while the default is `true` if the variable is unset. Set `E2E_SLOWMO` to the delay in milliseconds between browser actions when watching tests.
 
-Structure: `e2e/pages/` holds the page objects (`LoginPage`, `AppShell`), `e2e/fixtures/` the users, tickets, API helpers and DB helpers (block/unblock a user). `e2e/tests/auth.setup.ts` logs in once per role and saves the session in `e2e/.auth/`. Reporters: list (console), HTML (`e2e/playwright-report/`), JUnit (`e2e/test-results/junit.xml`).
+Structure: `e2e/pages/` holds the page objects (`LoginPage`, `AppShell`), `e2e/fixtures/` the users, tickets, API helpers and DB helpers (block/unblock a user). `e2e/tests/auth.setup.ts` logs in once per role and saves the session in `e2e/.auth/`. Reporters: step log (console, `e2e/reporters/step-log.ts`), HTML (`e2e/playwright-report/`), JUnit (`e2e/test-results/junit.xml`).
 
-Traces are saved for every executed test, including passing tests. Open them from the HTML report with `pnpm e2e:report`, or run `pnpm exec playwright show-trace <path-to-trace.zip>`. Traces may contain sensitive test data and are overwritten by subsequent runs.
+#### Test log
+
+Tests are plain Playwright code: no logging calls inside tests, page objects or helpers. The step-log reporter (`e2e/reporters/step-log.ts`) listens to Playwright's own step events and writes one line per event for every test, hook, `test.step`, Playwright action and assertion.
+
+Each line has fixed columns: timestamp (ISO 8601, UTC), level (`INFO`, `WARN`, `ERROR`), id, phase, outcome, duration, kind (`TEST`, `HOOK`, `STEP`, `ACTION`, `ASSERT`, `GLOBAL`) and text. `START` and `END` of the same step have the same id and exactly the same text, and the text ends with the source location:
+
+```text
+2026-11-01T10:15:02.294Z INFO  T001.S003 START -                   - STEP   AppShell.expectSignedInAs (e2e/tests/session.spec.ts:7)
+2026-11-01T10:15:02.297Z INFO  T001.S004 START -                   - ASSERT   Expect "toBeVisible" getByText('Dzień dobry,') (e2e/pages/AppShell.ts:31)
+2026-11-01T10:15:07.307Z ERROR T001.S004 END   FAIL          5010 ms ASSERT   Expect "toBeVisible" getByText('Dzień dobry,') (e2e/pages/AppShell.ts:31)
+2026-11-01T10:15:07.307Z ERROR T001.S004 ERROR -                   - ASSERT   ↳ Error: expect(locator).toBeVisible() failed | Expected: visible | Error: element(s) not found
+2026-11-01T10:15:07.308Z ERROR T001.S003 END   FAIL          5014 ms STEP   AppShell.expectSignedInAs (e2e/tests/session.spec.ts:7)
+```
+
+- **Id:** `T001` is one test attempt (each retry gets a new one), `T001.S004` is a step in it. Lines of parallel tests interleave; filter one attempt with `grep T001` or one step with `grep T001.S004`.
+- **Outcome:** `PASS`, `FAIL`, `TIMEOUT`, `INTERRUPTED`, `SKIPPED`, or `INCOMPLETE` for a step that never ended (timeout, killed worker); an unfinished step is never shown as `PASS`.
+- **Failures:** at the end of the run every failed test is listed with the innermost failed step (id, kind, text, location), its step path, the trace command and the full Playwright error (expected/received, call log).
+- **HTML report:** every attempt has its own log as the `step-log.txt` attachment, next to its trace. The trace itself shows the same steps in its Actions panel.
+
+To make the log readable:
+
+- Every assertion has a description as the second argument of `expect` (in Polish, like the test titles): `await expect(menu, 'Menu avatara zawiera rolę „administrator”').toContainText('administrator')`. It names the assertion in the step log, the HTML report and the failure message. ESLint (`no-restricted-syntax` in `eslint.config.js`) rejects `expect(...)`, `expect.soft(...)` and `expect.poll(...)` without it in `e2e/{tests,api,pages,fixtures}`, so the pre-commit hook blocks an undescribed assertion.
+- Group several actions with `await test.step('Assign the ticket', async () => { ... })`.
+- Page object methods marked `@step` (see `e2e/pages/step.ts`) appear as one step, e.g. `LoginPage.login`, with the line of the test that called them.
+
+`E2E_LOG=tests pnpm e2e` prints only test `START`/`END` lines (the attachment is always complete). The reporter masks known e2e passwords and names, e-mail addresses and token/cookie/password values in the terminal and in `step-log.txt` (`e2e/reporters/mask.ts`). Playwright's own HTML step tree and traces are not masked. Reporter checks: `pnpm e2e:reporter:test` (no app or database needed; also runs in CI as the `e2e-reporter` job). Design: [ADR-0016](docs/adr/0016-logowanie-e2e-reporter-playwright.md).
+
+Traces are kept for every failed test locally (`retain-on-failure`) and recorded on the first retry in CI (`on-first-retry`, as recommended by Playwright). Open them from the HTML report with `pnpm e2e:report`, or run `pnpm exec playwright show-trace <path-to-trace.zip>`. Traces may contain sensitive test data and are overwritten by subsequent runs.
 
 ## Code Quality
 

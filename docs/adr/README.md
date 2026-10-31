@@ -22,5 +22,6 @@ Nowy ADR: skopiuj [`0000-template.md`](0000-template.md), nadaj kolejny numer. Z
 | [0012](0012-jakosc-kodu-hooki-ci.md)              | Prettier, ESLint, typecheck w hookach i CI     | Zaakceptowany         |
 | [0013](0013-node-22.md)                           | Node.js 22                                     | Zaakceptowany         |
 | [0014](0014-frontend-spa-react-vite.md)           | SPA: React, Vite, TanStack Query, Tailwind     | Zaakceptowany         |
+| [0016](0016-logowanie-e2e-reporter-playwright.md) | Logowanie e2e przez reporter, bez wrapperów    | Zaakceptowany         |
 
 Decyzje tylko zaplanowane w `tech-stack.md` (Claude API, Resend, Railway, promptfoo, express-rate-limit) nie mają ADR-ów, bo nie zostały jeszcze wdrożone.
