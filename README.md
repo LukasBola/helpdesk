@@ -247,14 +247,19 @@ Two projects:
 
 ```bash
 pnpm e2e:install             # one-time: download Chromium, Firefox and WebKit
-pnpm e2e                     # everything, headless
+pnpm e2e                     # everything; browser visible with the example .env
+E2E_HEADLESS=true pnpm e2e   # run without a visible browser
 pnpm e2e --project=api       # API tests only
 pnpm e2e:headed              # watch the browser (slowed down by E2E_SLOWMO=400 ms)
 pnpm e2e:ui                  # Playwright UI mode
 pnpm e2e:report              # open the last HTML report
 ```
 
+`E2E_HEADLESS` accepts `true` or `false`; the example `.env` sets it to `false`, while the default is `true` if the variable is unset. Set `E2E_SLOWMO` to the delay in milliseconds between browser actions when watching tests.
+
 Structure: `e2e/pages/` holds the page objects (`LoginPage`, `AppShell`), `e2e/fixtures/` the users, tickets, API helpers and DB helpers (block/unblock a user). `e2e/tests/auth.setup.ts` logs in once per role and saves the session in `e2e/.auth/`. Reporters: list (console), HTML (`e2e/playwright-report/`), JUnit (`e2e/test-results/junit.xml`).
+
+Traces are saved for every executed test, including passing tests. Open them from the HTML report with `pnpm e2e:report`, or run `pnpm exec playwright show-trace <path-to-trace.zip>`. Traces may contain sensitive test data and are overwritten by subsequent runs.
 
 ## Code Quality
 

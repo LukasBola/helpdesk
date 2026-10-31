@@ -13,6 +13,11 @@ try {
   // No .env: tests that need a secret skip themselves.
 }
 
+const headless = process.env.E2E_HEADLESS ?? 'true'
+if (headless !== 'true' && headless !== 'false') {
+  throw new Error('E2E_HEADLESS must be "true" or "false"')
+}
+
 // Firefox and WebKit are installed (`pnpm e2e:install`) but the suite runs on Chrome only.
 export default defineConfig({
   outputDir: './test-results',
@@ -27,8 +32,9 @@ export default defineConfig({
   ],
   use: {
     baseURL: BASE_URL,
+    headless: headless === 'true',
     locale: 'pl-PL',
-    trace: 'retain-on-failure',
+    trace: 'on',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     launchOptions: { slowMo: Number(process.env.E2E_SLOWMO ?? 0) },
