@@ -60,3 +60,20 @@ jobs:
         run: pnpm --filter server test
       - name: Run client tests
         run: pnpm --filter client test
+
+  e2e-reporter:
+    name: E2E step-log reporter
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The reporter's own checks: no app or database, only Chromium for the sample cases.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e:reporter:test
