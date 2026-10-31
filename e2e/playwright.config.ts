@@ -26,7 +26,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: [
-    ['list'],
+    // Live START/END log of tests and steps (masked). See e2e/reporters/step-log.ts.
+    ['./reporters/step-log.ts'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['junit', { outputFile: 'test-results/junit.xml' }],
   ],
@@ -34,7 +35,9 @@ export default defineConfig({
     baseURL: BASE_URL,
     headless: headless === 'true',
     locale: 'pl-PL',
-    trace: 'on',
+    // Playwright recommends on-first-retry in CI (https://playwright.dev/docs/trace-viewer);
+    // locally there are no retries, so keep the trace of every failed test instead.
+    trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     launchOptions: { slowMo: Number(process.env.E2E_SLOWMO ?? 0) },
