@@ -39,38 +39,129 @@ helpdesk/
 
 ## Getting Started
 
+Run every command below from the repository root (the `helpdesk/` folder) unless stated otherwise.
+
 ### Prerequisites
 
-- Node.js 22+
-- pnpm 11+
-- Docker (for local Postgres)
+You need three tools installed. Check each one:
+
+- **Node.js 22+**: runs the server, the client build and the tooling.
+
+  ```bash
+  node --version
+  ```
+
+- **pnpm 11+**: the package manager for this monorepo (`client/`, `server/`, `e2e/`). If it is missing, enable it through Corepack, which ships with Node.js:
+
+  ```bash
+  pnpm --version
+  ```
+
+  ```bash
+  corepack enable pnpm
+  ```
+
+- **Docker** (Docker Desktop on macOS/Windows): runs the local PostgreSQL database. Make sure Docker is started:
+
+  ```bash
+  docker --version
+  ```
 
 ### First-time setup
 
+#### 1. Clone the repository
+
 ```bash
-# 1. Clone the repository
-git clone <repo-url>
-cd helpdesk
-
-# 2. Install dependencies
-pnpm install
-
-# 3. Set up environment variables
-cp .env.example .env
-# Edit .env — at minimum set DATABASE_URL, BETTER_AUTH_SECRET and BETTER_AUTH_URL
-# Generate a secret with: openssl rand -base64 32
-
-# 4. Start the database
-docker compose up -d
-
-# 5. Run database migrations
-pnpm --filter server exec prisma migrate dev
+git clone https://github.com/LukasBola/helpdesk.git
 ```
 
-### Running locally
+```bash
+cd helpdesk
+```
+
+#### 2. Install dependencies
+
+Installs the packages of all workspaces and generates the Prisma client (the `postinstall` script in `server/`).
 
 ```bash
-# Start both server and client (hot reload)
+pnpm install
+```
+
+#### 3. Create the `.env` file
+
+The app reads its configuration from a `.env` file in the repository root. Start from the template:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` in your editor and set the three required variables:
+
+- `DATABASE_URL`: where the database lives. For the Docker database from step 4 use exactly:
+
+  ```text
+  postgresql://helpdesk:helpdesk@localhost:5432/helpdesk
+  ```
+
+- `BETTER_AUTH_SECRET`: a random secret (at least 32 characters) that signs session cookies. Generate your own and paste the output:
+
+  ```bash
+  openssl rand -base64 32
+  ```
+
+- `BETTER_AUTH_URL`: the backend address. Locally:
+
+  ```text
+  http://localhost:3000
+  ```
+
+The remaining variables (`ANTHROPIC_API_KEY`, `POSTMARK_WEBHOOK_TOKEN`, `RESEND_API_KEY`) are only needed for AI and email features. The app starts without them. See [Environment variables](#environment-variables).
+
+> `.env` is in `.gitignore` and must never be committed. Never put real secrets or API keys in this README, `.env.example` or any other tracked file.
+
+#### 4. Start the database
+
+Starts PostgreSQL 16 with the pgvector extension in Docker, on port `5432`. `-d` runs it in the background. Data is kept in a Docker volume, so it survives restarts.
+
+```bash
+docker compose up -d
+```
+
+Check that the `postgres` container is `running`:
+
+```bash
+docker compose ps
+```
+
+#### 5. Create the database tables
+
+Applies all migrations from `server/prisma/migrations` to the empty database. (`prisma migrate dev` is only for creating new migrations after a schema change, see [Database](#database).)
+
+```bash
+pnpm --filter server exec prisma migrate deploy
+```
+
+#### 6. Create the admin account
+
+The seed script creates the first user, an admin you can log in with. It is safe to run more than once.
+
+```bash
+pnpm --filter server exec prisma db seed
+```
+
+Default local credentials:
+
+| Email                  | Password      |
+| ---------------------- | ------------- |
+| `admin@helpdesk.local` | `changeme123` |
+
+> These defaults are for local development only and are already public in `server/prisma/seed.ts`. To use your own, set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in `.env` before running the seed. Any shared or production environment must always set its own `SEED_ADMIN_PASSWORD`.
+
+#### 7. Start the app
+
+Starts the backend and the frontend together, with hot reload. Keep this terminal open; stop with `Ctrl+C`.
+
+```bash
 pnpm dev
 ```
 
@@ -79,7 +170,40 @@ pnpm dev
 | Frontend    | <http://localhost:5173> |
 | Backend API | <http://localhost:3000> |
 
-> If port 5173 is taken, Vite picks the next available one (5174, 5175…).
+> If port 5173 is taken, Vite picks the next available one (5174, 5175…). Check the terminal output for the actual URL.
+
+#### 8. Log in
+
+Open <http://localhost:5173> and sign in with the admin account from step 6.
+
+### Running locally (every next time)
+
+After the first-time setup you only need two commands: start the database (if Docker was restarted)...
+
+```bash
+docker compose up -d
+```
+
+...and start the app:
+
+```bash
+pnpm dev
+```
+
+After pulling changes that touch `package.json` or `server/prisma/migrations`, run `pnpm install` and step 5 again.
+
+To stop the database (data is kept):
+
+```bash
+docker compose down
+```
+
+### Troubleshooting
+
+- **`Can't reach database server at localhost:5432`**: the database is not running. Start Docker, then run `docker compose up -d`.
+- **`port is already allocated` when starting the database**: another PostgreSQL already uses port `5432`. Stop it, or change the left port in `docker-compose.yml` (e.g. `'5433:5432'`) and in `DATABASE_URL`.
+- **Login fails with the default credentials**: the seed has not run. Run step 6.
+- **`Environment variable not found`**: `.env` is missing or not in the repository root. Repeat step 3.
 
 ### Environment variables
 
