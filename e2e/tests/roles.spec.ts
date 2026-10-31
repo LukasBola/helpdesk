@@ -11,7 +11,7 @@ test.describe('Administrator', () => {
     const shell = new AppShell(page)
     await shell.expectSignedInAs(USERS.admin.firstName)
     await shell.navigateTo('Użytkownicy')
-    await expect(page).toHaveURL(/\/users$/)
+    await expect(page, 'Adres to /users').toHaveURL(/\/users$/)
   })
 })
 
@@ -22,13 +22,19 @@ test.describe('Agent', () => {
     await page.goto('/tickets')
     const shell = new AppShell(page)
     await shell.expectSignedInAs(USERS.agent.firstName)
-    await expect(shell.navLink('Tickety')).toBeVisible()
-    await expect(shell.navLink('Użytkownicy')).toHaveCount(0)
+    await expect(shell.navLink('Tickety'), 'Sidebar agenta zawiera link „Tickety”').toBeVisible()
+    await expect(
+      shell.navLink('Użytkownicy'),
+      'Sidebar agenta nie zawiera linku „Użytkownicy”',
+    ).toHaveCount(0)
   })
 
   test('wpisanie /users ręcznie przekierowuje na Tickety', async ({ page }) => {
     await page.goto('/users')
-    await expect(page).toHaveURL(/\/tickets$/)
-    await expect(new AppShell(page).heading('Tickety')).toBeVisible()
+    await expect(page, 'Agent wchodzący na /users trafia na /tickets').toHaveURL(/\/tickets$/)
+    await expect(
+      new AppShell(page).heading('Tickety'),
+      'Widoczny jest nagłówek „Tickety”',
+    ).toBeVisible()
   })
 })

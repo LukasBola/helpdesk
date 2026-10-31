@@ -13,42 +13,59 @@ test.describe('API /api/auth: logowanie', () => {
     const res = await ctx.post(SIGN_IN, {
       data: { email: USERS.agent.email, password: USERS.agent.password },
     })
-    expect(res.status()).toBe(200)
+    expect(res.status(), 'Status logowania poprawnymi danymi').toBe(200)
 
     const setCookie = res.headers()['set-cookie'] ?? ''
-    expect(setCookie).toMatch(/better-auth\.session_token=/)
-    expect(setCookie).toMatch(/HttpOnly/i)
-    expect(setCookie).toMatch(/SameSite=Lax/i)
+    expect(setCookie, 'Set-Cookie ustawia better-auth.session_token').toMatch(
+      /better-auth\.session_token=/,
+    )
+    expect(setCookie, 'Ciasteczko sesji ma flagę HttpOnly').toMatch(/HttpOnly/i)
+    expect(setCookie, 'Ciasteczko sesji ma SameSite=Lax').toMatch(/SameSite=Lax/i)
 
     const body = await res.json()
-    expect(body.user).toMatchObject({ email: USERS.agent.email, role: 'AGENT' })
+    expect(body.user, 'Odpowiedź zawiera zalogowanego agenta z rolą AGENT').toMatchObject({
+      email: USERS.agent.email,
+      role: 'AGENT',
+    })
     const text = JSON.stringify(body)
-    expect(text).not.toContain(USERS.agent.password)
-    expect(text).not.toMatch(/"password"|"passwordHash"/)
+    expect(text, 'Odpowiedź nie zawiera hasła w jawnej postaci').not.toContain(USERS.agent.password)
+    expect(text, 'Odpowiedź nie zawiera pól password ani passwordHash').not.toMatch(
+      /"password"|"passwordHash"/,
+    )
   })
 
   test('A2 złe hasło, nieznany e-mail i zablokowane konto dają identyczną odpowiedź', async () => {
     const ctx = await newApiContext()
     const attempts = [
-      { email: USERS.agent.email, password: 'wrong-password-1' },
-      { email: 'nobody@helpdesk.local', password: 'wrong-password-1' },
-      { email: USERS.locked.email, password: USERS.locked.password },
+      { label: 'złe hasło', data: { email: USERS.agent.email, password: 'wrong-password-1' } },
+      {
+        label: 'nieznany e-mail',
+        data: { email: 'nobody@helpdesk.local', password: 'wrong-password-1' },
+      },
+      {
+        label: 'zablokowane konto',
+        data: { email: USERS.locked.email, password: USERS.locked.password },
+      },
     ]
-    for (const data of attempts) {
+    for (const { label, data } of attempts) {
       const res = await ctx.post(SIGN_IN, { data })
-      expect(res.status(), data.email).toBe(401)
-      expect(await res.json(), data.email).toEqual(INVALID)
-      expect(res.headers()['set-cookie'], data.email).toBeUndefined()
+      expect(res.status(), `Status logowania: ${label}`).toBe(401)
+      expect(await res.json(), `Treść błędu logowania: ${label}`).toEqual(INVALID)
+      expect(res.headers()['set-cookie'], `Brak Set-Cookie: ${label}`).toBeUndefined()
     }
   })
 
   test('A3 brak hasła lub zły format e-maila: 400', async () => {
     const ctx = await newApiContext()
-    expect((await ctx.post(SIGN_IN, { data: { email: USERS.agent.email } })).status()).toBe(400)
+    expect(
+      (await ctx.post(SIGN_IN, { data: { email: USERS.agent.email } })).status(),
+      'Status logowania bez hasła',
+    ).toBe(400)
     expect(
       (
         await ctx.post(SIGN_IN, { data: { email: 'nie-email', password: 'x'.repeat(10) } })
       ).status(),
+      'Status logowania z niepoprawnym formatem e-maila',
     ).toBe(400)
   })
 
@@ -57,7 +74,7 @@ test.describe('API /api/auth: logowanie', () => {
     const res = await ctx.post(SIGN_IN, {
       data: { email: USERS.agent.email.toUpperCase(), password: USERS.agent.password },
     })
-    expect(res.status()).toBe(200)
+    expect(res.status(), 'Status logowania e-mailem pisanym wielkimi literami').toBe(200)
   })
 
   test('A5 żądanie z obcego originu: 403 INVALID_ORIGIN', async () => {
@@ -66,8 +83,8 @@ test.describe('API /api/auth: logowanie', () => {
       headers: { Origin: 'http://evil.example' },
       data: { email: USERS.agent.email, password: USERS.agent.password },
     })
-    expect(res.status()).toBe(403)
-    expect((await res.json()).code).toBe('INVALID_ORIGIN')
+    expect(res.status(), 'Status logowania z obcego originu').toBe(403)
+    expect((await res.json()).code, 'Kod błędu logowania z obcego originu').toBe('INVALID_ORIGIN')
   })
 
   test('A6 rejestracja jest wyłączona', async () => {
@@ -76,9 +93,9 @@ test.describe('API /api/auth: logowanie', () => {
     const res = await ctx.post('/api/auth/sign-up/email', {
       data: { email, password: 'password-123', name: 'Nowy' },
     })
-    expect(res.status()).toBe(400)
+    expect(res.status(), 'Status rejestracji (sign-up jest wyłączony)').toBe(400)
     const login = await ctx.post(SIGN_IN, { data: { email, password: 'password-123' } })
-    expect(login.status()).toBe(401)
+    expect(login.status(), 'Status logowania na konto z odrzuconej rejestracji').toBe(401)
   })
 })
 
@@ -86,26 +103,38 @@ test.describe('API /api/auth: sesja', () => {
   test('A7 get-session bez ciasteczka zwraca null', async () => {
     const ctx = await newApiContext()
     const res = await ctx.get('/api/auth/get-session')
-    expect(res.status()).toBe(200)
-    expect(await res.json()).toBeNull()
+    expect(res.status(), 'Status get-session bez ciasteczka').toBe(200)
+    expect(await res.json(), 'get-session bez ciasteczka zwraca null').toBeNull()
   })
 
   test('A7 get-session po zalogowaniu zwraca użytkownika z rolą i isBlocked', async () => {
     const ctx = await signInAs('admin')
     const body = await (await ctx.get('/api/auth/get-session')).json()
-    expect(body.user).toMatchObject({ email: USERS.admin.email, role: 'ADMIN', isBlocked: false })
-    expect(body.session.token).toBeTruthy()
+    expect(body.user, 'get-session zwraca admina z rolą ADMIN i isBlocked=false').toMatchObject({
+      email: USERS.admin.email,
+      role: 'ADMIN',
+      isBlocked: false,
+    })
+    expect(body.session.token, 'get-session zwraca token sesji').toBeTruthy()
   })
 
   test('A8 wylogowanie unieważnia sesję także dla API ticketów', async () => {
     const ctx = await signInAs('api')
-    expect((await ctx.get('/api/tickets')).status()).toBe(200)
+    expect(
+      (await ctx.get('/api/tickets')).status(),
+      'Status GET /api/tickets przed wylogowaniem',
+    ).toBe(200)
 
     const out = await ctx.post('/api/auth/sign-out', { data: {} })
-    expect(out.status()).toBe(200)
+    expect(out.status(), 'Status wylogowania').toBe(200)
 
-    expect(await (await ctx.get('/api/auth/get-session')).json()).toBeNull()
-    expect((await ctx.get('/api/tickets')).status()).toBe(401)
+    expect(
+      await (await ctx.get('/api/auth/get-session')).json(),
+      'get-session po wylogowaniu zwraca null',
+    ).toBeNull()
+    expect((await ctx.get('/api/tickets')).status(), 'Status GET /api/tickets po wylogowaniu').toBe(
+      401,
+    )
   })
 
   test('A8 stare ciasteczko po wylogowaniu nie działa (ponowne użycie tokenu)', async () => {
@@ -116,7 +145,7 @@ test.describe('API /api/auth: sesja', () => {
     const replay = await newApiContext()
     const cookie = cookies.map(c => `${c.name}=${c.value}`).join('; ')
     const res = await replay.get('/api/tickets', { headers: { Cookie: cookie } })
-    expect(res.status()).toBe(401)
+    expect(res.status(), 'Status GET /api/tickets ze starym ciasteczkiem po wylogowaniu').toBe(401)
   })
 })
 
@@ -124,17 +153,17 @@ test.describe('API /api/auth: zmiana konta', () => {
   test('A9 agent nie może nadać sobie roli ADMIN przez update-user', async () => {
     const ctx = await signInAs('escalate')
     const res = await ctx.post('/api/auth/update-user', { data: { role: 'ADMIN' } })
-    expect(res.status()).toBe(400)
+    expect(res.status(), 'Status update-user z role=ADMIN').toBe(400)
     const session = await (await ctx.get('/api/auth/get-session')).json()
-    expect(session.user.role).toBe('AGENT')
+    expect(session.user.role, 'Rola użytkownika po próbie nadania ADMIN').toBe('AGENT')
   })
 
   test('A9 użytkownik nie może ustawić sobie isBlocked przez update-user', async () => {
     const ctx = await signInAs('escalate')
     const res = await ctx.post('/api/auth/update-user', { data: { isBlocked: true } })
-    expect(res.status()).toBe(400)
+    expect(res.status(), 'Status update-user z isBlocked=true').toBe(400)
     const session = await (await ctx.get('/api/auth/get-session')).json()
-    expect(session.user.isBlocked).toBe(false)
+    expect(session.user.isBlocked, 'isBlocked użytkownika po próbie zmiany').toBe(false)
   })
 
   test('A10 zmiana hasła ze złym obecnym hasłem jest odrzucona', async () => {
@@ -142,7 +171,7 @@ test.describe('API /api/auth: zmiana konta', () => {
     const res = await ctx.post('/api/auth/change-password', {
       data: { currentPassword: 'wrong-password-1', newPassword: 'new-password-123' },
     })
-    expect(res.status()).toBe(400)
+    expect(res.status(), 'Status change-password ze złym obecnym hasłem').toBe(400)
     // Old password still works.
     await signInAs('api')
   })
@@ -152,7 +181,7 @@ test.describe('API /api/auth: zmiana konta', () => {
     const res = await ctx.post('/api/auth/change-password', {
       data: { currentPassword: USERS.api.password, newPassword: 'short' },
     })
-    expect(res.status()).toBe(400)
+    expect(res.status(), 'Status change-password z hasłem krótszym niż 8 znaków').toBe(400)
     await signInAs('api')
   })
 
@@ -160,10 +189,13 @@ test.describe('API /api/auth: zmiana konta', () => {
     const ctx = await signInAs('account')
     for (const name of ['', '   ', 'x'.repeat(500)]) {
       const res = await ctx.post('/api/auth/update-user', { data: { name } })
-      expect(res.status(), JSON.stringify(name.slice(0, 10))).toBe(400)
+      expect(
+        res.status(),
+        `Status update-user z nazwą ${JSON.stringify(name.slice(0, 10))} (długość ${name.length})`,
+      ).toBe(400)
     }
     const session = await (await ctx.get('/api/auth/get-session')).json()
-    expect(session.user.name).toBe(USERS.account.name)
+    expect(session.user.name, 'Nazwa użytkownika po odrzuconych zmianach').toBe(USERS.account.name)
   })
 })
 
@@ -171,8 +203,10 @@ test.describe('API /api/auth: wyłączone i chronione endpointy', () => {
   test('A11 usunięcie konta jest niedostępne', async () => {
     const ctx = await signInAs('account')
     const res = await ctx.post('/api/auth/delete-user', { data: {} })
-    expect(res.status()).toBeGreaterThanOrEqual(400)
-    expect(res.status()).toBeLessThan(500)
+    expect(res.status(), 'Status delete-user jest błędem klienta (>= 400)').toBeGreaterThanOrEqual(
+      400,
+    )
+    expect(res.status(), 'Status delete-user nie jest błędem serwera (< 500)').toBeLessThan(500)
     await signInAs('account')
   })
 
@@ -181,13 +215,15 @@ test.describe('API /api/auth: wyłączone i chronione endpointy', () => {
     const viaChange = await ctx.post('/api/auth/change-email', {
       data: { newEmail: 'changed@helpdesk.local' },
     })
-    expect(viaChange.status()).toBe(400)
+    expect(viaChange.status(), 'Status change-email').toBe(400)
     const viaUpdate = await ctx.post('/api/auth/update-user', {
       data: { email: 'changed@helpdesk.local' },
     })
-    expect(viaUpdate.status()).toBe(400)
+    expect(viaUpdate.status(), 'Status update-user ze zmianą e-maila').toBe(400)
     const session = await (await ctx.get('/api/auth/get-session')).json()
-    expect(session.user.email).toBe(USERS.account.email)
+    expect(session.user.email, 'E-mail użytkownika po odrzuconych zmianach').toBe(
+      USERS.account.email,
+    )
   })
 
   test('A11 reset hasła: identyczna odpowiedź dla znanego i nieznanego e-maila', async () => {
@@ -198,8 +234,13 @@ test.describe('API /api/auth: wyłączone i chronione endpointy', () => {
     const unknown = await ctx.post('/api/auth/request-password-reset', {
       data: { email: 'nobody@helpdesk.local', redirectTo: '/' },
     })
-    expect(known.status()).toBe(unknown.status())
-    expect(await known.json()).toEqual(await unknown.json())
+    expect(known.status(), 'Status resetu hasła dla znanego e-maila = dla nieznanego').toBe(
+      unknown.status(),
+    )
+    expect(
+      await known.json(),
+      'Treść odpowiedzi resetu hasła dla znanego e-maila = dla nieznanego',
+    ).toEqual(await unknown.json())
   })
 
   // Tokens are returned by design (revoke-session takes one); they can't be turned into a
@@ -209,10 +250,13 @@ test.describe('API /api/auth: wyłączone i chronione endpointy', () => {
     await signInAs('agent')
     const me = (await (await ctx.get('/api/auth/get-session')).json()).user.id as string
     const res = await ctx.get('/api/auth/list-sessions')
-    expect(res.status()).toBe(200)
+    expect(res.status(), 'Status list-sessions').toBe(200)
     const sessions = (await res.json()) as { userId: string }[]
-    expect(sessions.length).toBeGreaterThan(0)
-    expect(sessions.every(session => session.userId === me)).toBe(true)
+    expect(sessions.length, 'Liczba sesji na liście').toBeGreaterThan(0)
+    expect(
+      sessions.every(session => session.userId === me),
+      'Wszystkie sesje na liście należą do zalogowanego użytkownika',
+    ).toBe(true)
   })
 
   test('A13 wylogowanie z obcego originu jest odrzucone (CSRF)', async () => {
@@ -221,8 +265,11 @@ test.describe('API /api/auth: wyłączone i chronione endpointy', () => {
       headers: { Origin: 'http://evil.example' },
       data: {},
     })
-    expect(res.status()).toBe(403)
-    expect((await ctx.get('/api/tickets')).status()).toBe(200)
+    expect(res.status(), 'Status wylogowania z obcego originu').toBe(403)
+    expect(
+      (await ctx.get('/api/tickets')).status(),
+      'Status GET /api/tickets po odrzuconym wylogowaniu (sesja nadal działa)',
+    ).toBe(200)
   })
 
   test('A13 update-user z obcego originu jest odrzucony (CSRF)', async () => {
@@ -231,7 +278,7 @@ test.describe('API /api/auth: wyłączone i chronione endpointy', () => {
       headers: { Origin: 'http://evil.example' },
       data: { name: 'Hacked' },
     })
-    expect(res.status()).toBe(403)
+    expect(res.status(), 'Status update-user z obcego originu').toBe(403)
   })
 })
 
@@ -244,8 +291,13 @@ test.describe('API /api/auth: zablokowany użytkownik z aktywną sesją', () => 
     db.block(USERS.selfUnblock.email)
     await ctx.post('/api/auth/update-user', { data: { isBlocked: false } })
     const session = await (await ctx.get('/api/auth/get-session')).json()
-    expect(session?.user?.isBlocked ?? true).toBe(true)
-    expect((await ctx.get('/api/tickets')).status()).toBe(401)
+    expect(session?.user?.isBlocked ?? true, 'isBlocked po próbie samodzielnego odblokowania').toBe(
+      true,
+    )
+    expect(
+      (await ctx.get('/api/tickets')).status(),
+      'Status GET /api/tickets zablokowanego użytkownika',
+    ).toBe(401)
   })
 
   // Known gap, owned by Plan 09: blocking must revoke sessions. Until then Better Auth's own
@@ -253,7 +305,13 @@ test.describe('API /api/auth: zablokowany użytkownik z aktywną sesją', () => 
   test.fixme('A14 sesja zablokowanego nie działa na endpointach Better Auth', async () => {
     const ctx = await signInAs('selfUnblock')
     db.block(USERS.selfUnblock.email)
-    expect(await (await ctx.get('/api/auth/get-session')).json()).toBeNull()
-    expect((await ctx.get('/api/auth/list-sessions')).status()).toBe(401)
+    expect(
+      await (await ctx.get('/api/auth/get-session')).json(),
+      'get-session zablokowanego użytkownika zwraca null',
+    ).toBeNull()
+    expect(
+      (await ctx.get('/api/auth/list-sessions')).status(),
+      'Status list-sessions zablokowanego użytkownika',
+    ).toBe(401)
   })
 })

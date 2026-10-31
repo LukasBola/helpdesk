@@ -10,31 +10,43 @@ test.describe('Sesja: zalogowany użytkownik', () => {
 
   test('U5 wejście na /login przekierowuje na Tickety', async ({ page }) => {
     await page.goto('/login')
-    await expect(page).toHaveURL(/\/tickets$/)
-    await expect(new AppShell(page).heading('Tickety')).toBeVisible()
+    await expect(page, 'Zalogowany użytkownik wchodzący na /login trafia na /tickets').toHaveURL(
+      /\/tickets$/,
+    )
+    await expect(
+      new AppShell(page).heading('Tickety'),
+      'Widoczny jest nagłówek „Tickety”',
+    ).toBeVisible()
   })
 
   test('U10 menu avatara pokazuje imię, nazwisko i rolę', async ({ page }) => {
     await page.goto('/tickets')
     const menu = await new AppShell(page).openUserMenu()
-    await expect(menu).toContainText(USERS.admin.name)
-    await expect(menu).toContainText('administrator')
+    await expect(menu, 'Menu avatara zawiera imię i nazwisko admina').toContainText(
+      USERS.admin.name,
+    )
+    await expect(menu, 'Menu avatara zawiera rolę „administrator”').toContainText('administrator')
     await page.keyboard.press('Escape')
-    await expect(menu).toBeHidden()
+    await expect(menu, 'Menu avatara zamknęło się').toBeHidden()
   })
 
   test('U13 strona ma język polski i tytuł', async ({ page }) => {
     await page.goto('/tickets')
-    await expect(page.locator('html')).toHaveAttribute('lang', 'pl')
-    await expect(page).toHaveTitle('Helpdesk')
+    await expect(page.locator('html'), 'Element <html> ma lang="pl"').toHaveAttribute('lang', 'pl')
+    await expect(page, 'Tytuł strony to „Helpdesk”').toHaveTitle('Helpdesk')
   })
 
   test('U15 SPA pobiera sesję przez proxy /api/auth/get-session', async ({ page }) => {
     const sessionResponse = page.waitForResponse(r => r.url().endsWith('/api/auth/get-session'))
     await page.goto('/tickets')
     const res = await sessionResponse
-    expect(new URL(res.url()).origin).toBe(new URL(page.url()).origin)
-    expect((await res.json()).user.email).toBe(USERS.admin.email)
+    expect(
+      new URL(res.url()).origin,
+      'Żądanie get-session idzie przez proxy (ten sam origin co SPA)',
+    ).toBe(new URL(page.url()).origin)
+    expect((await res.json()).user.email, 'get-session zwraca zalogowanego admina').toBe(
+      USERS.admin.email,
+    )
   })
 })
 
@@ -44,9 +56,13 @@ test.describe('Sesja: agent', () => {
   test('U10 menu avatara agenta pokazuje rolę agent', async ({ page }) => {
     await page.goto('/tickets')
     const menu = await new AppShell(page).openUserMenu()
-    await expect(menu).toContainText(USERS.agent.name)
-    await expect(menu).toContainText('agent')
-    await expect(menu).not.toContainText('administrator')
+    await expect(menu, 'Menu avatara zawiera imię i nazwisko agenta').toContainText(
+      USERS.agent.name,
+    )
+    await expect(menu, 'Menu avatara zawiera rolę „agent”').toContainText('agent')
+    await expect(menu, 'Menu avatara agenta nie zawiera roli „administrator”').not.toContainText(
+      'administrator',
+    )
   })
 })
 
@@ -58,7 +74,9 @@ test.describe('Sesja: logowanie i wylogowanie', () => {
     const loginPage = new LoginPage(page)
     await loginPage.expectVisible()
     await loginPage.login(USERS.agent.email, USERS.agent.password)
-    await expect(page).toHaveURL(/\/tickets\?status=OPEN&page=2$/)
+    await expect(page, 'Po zalogowaniu adres zachowuje parametry ?status=OPEN&page=2').toHaveURL(
+      /\/tickets\?status=OPEN&page=2$/,
+    )
   })
 
   test('U7 po wylogowaniu przycisk Wstecz nie pokazuje aplikacji', async ({ page }) => {
@@ -71,8 +89,14 @@ test.describe('Sesja: logowanie i wylogowanie', () => {
     await loginPage.expectVisible()
 
     await page.goBack()
-    await expect(loginPage.submit).toBeVisible()
-    await expect(shell.greeting).toBeHidden()
+    await expect(
+      loginPage.submit,
+      'Po wylogowaniu i Wstecz widoczny jest formularz logowania',
+    ).toBeVisible()
+    await expect(
+      shell.greeting,
+      'Po wylogowaniu i Wstecz nie widać powitania z aplikacji',
+    ).toBeHidden()
   })
 
   test('U8 sesja jest wspólna dla kart; wylogowanie w jednej wylogowuje drugą', async ({
@@ -86,14 +110,20 @@ test.describe('Sesja: logowanie i wylogowanie', () => {
 
     const second = await context.newPage()
     await second.goto('/knowledge-base')
-    await expect(new AppShell(second).heading('Baza wiedzy')).toBeVisible()
+    await expect(
+      new AppShell(second).heading('Baza wiedzy'),
+      'Druga karta jest zalogowana (nagłówek „Baza wiedzy”)',
+    ).toBeVisible()
 
     await new AppShell(first).logout()
     await loginPage.expectVisible()
 
     // The other tab learns about the logout without a reload (Better Auth broadcasts it).
     await second.bringToFront()
-    await expect(new LoginPage(second).submit).toBeVisible({ timeout: 10_000 })
+    await expect(
+      new LoginPage(second).submit,
+      'Po wylogowaniu w pierwszej karcie druga pokazuje formularz logowania',
+    ).toBeVisible({ timeout: 10_000 })
   })
 
   test('U14 usunięte ciasteczka + odświeżenie: logowanie i powrót na tę samą stronę', async ({
@@ -110,12 +140,17 @@ test.describe('Sesja: logowanie i wylogowanie', () => {
     await page.reload()
     await loginPage.expectVisible()
     await loginPage.login(USERS.agent.email, USERS.agent.password)
-    await expect(page).toHaveURL(/\/tickets\/mine$/)
+    await expect(page, 'Po ponownym logowaniu adres wraca do /tickets/mine').toHaveURL(
+      /\/tickets\/mine$/,
+    )
   })
 
   test('U12 404 dla niezalogowanego prowadzi do logowania', async ({ page }) => {
     await page.goto('/nie-ma-takiej-strony')
-    await expect(page.getByRole('heading', { name: 'Nie znaleziono strony' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Nie znaleziono strony' }),
+      'Niezalogowany widzi nagłówek 404 „Nie znaleziono strony”',
+    ).toBeVisible()
     await page.getByRole('link', { name: 'Wróć do ticketów' }).click()
     await new LoginPage(page).expectVisible()
   })
@@ -148,8 +183,14 @@ test.describe('Sesja: blokada konta w trakcie pracy', () => {
     // A loop would bounce back to /tickets after reaching /login. (React StrictMode in dev may
     // report the /login redirect twice; that is not a loop.)
     const afterLogin = urls.slice(urls.indexOf('/login'))
-    expect(afterLogin.length).toBeGreaterThan(0)
-    expect(afterLogin.every(url => url === '/login')).toBe(true)
+    expect(
+      afterLogin.length,
+      'Liczba przejść od pierwszego /login (musi być co najmniej jedno)',
+    ).toBeGreaterThan(0)
+    expect(
+      afterLogin.every(url => url === '/login'),
+      'Po /login nie było przekierowania z powrotem do aplikacji (brak pętli)',
+    ).toBe(true)
 
     await loginPage.login(USERS.blocked.email, USERS.blocked.password)
     await loginPage.expectError('Nieprawidłowy e-mail lub hasło')

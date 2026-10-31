@@ -17,7 +17,7 @@ function expectNoSignInRequest(page: Page): () => Promise<void> {
   })
   return async () => {
     await page.waitForLoadState('networkidle')
-    expect(count).toBe(0)
+    expect(count, 'Liczba wysłanych żądań POST /api/auth/sign-in/email').toBe(0)
   }
 }
 
@@ -27,9 +27,10 @@ test.describe('Formularz logowania: walidacja', () => {
     const loginPage = new LoginPage(page)
     await loginPage.goto()
     await loginPage.submit.click()
-    expect(await loginPage.email.evaluate((el: HTMLInputElement) => el.validity.valueMissing)).toBe(
-      true,
-    )
+    expect(
+      await loginPage.email.evaluate((el: HTMLInputElement) => el.validity.valueMissing),
+      'Pole e-mail zgłasza brak wartości (validity.valueMissing)',
+    ).toBe(true)
     await noRequest()
   })
 
@@ -38,9 +39,10 @@ test.describe('Formularz logowania: walidacja', () => {
     const loginPage = new LoginPage(page)
     await loginPage.goto()
     await loginPage.login('to-nie-jest-email', 'password-123')
-    expect(await loginPage.email.evaluate((el: HTMLInputElement) => el.validity.typeMismatch)).toBe(
-      true,
-    )
+    expect(
+      await loginPage.email.evaluate((el: HTMLInputElement) => el.validity.typeMismatch),
+      'Pole e-mail zgłasza zły format (validity.typeMismatch)',
+    ).toBe(true)
     await noRequest()
   })
 
@@ -51,6 +53,7 @@ test.describe('Formularz logowania: walidacja', () => {
     await loginPage.login(USERS.agent.email, '')
     expect(
       await loginPage.password.evaluate((el: HTMLInputElement) => el.validity.valueMissing),
+      'Pole hasła zgłasza brak wartości (validity.valueMissing)',
     ).toBe(true)
     await noRequest()
   })
@@ -66,10 +69,19 @@ test.describe('Formularz logowania: walidacja', () => {
   test('U2 pola mają poprawne typy i autouzupełnianie', async ({ page }) => {
     const loginPage = new LoginPage(page)
     await loginPage.goto()
-    await expect(loginPage.email).toHaveAttribute('type', 'email')
-    await expect(loginPage.email).toHaveAttribute('autocomplete', 'email')
-    await expect(loginPage.password).toHaveAttribute('type', 'password')
-    await expect(loginPage.password).toHaveAttribute('autocomplete', 'current-password')
+    await expect(loginPage.email, 'Pole e-mail ma type="email"').toHaveAttribute('type', 'email')
+    await expect(loginPage.email, 'Pole e-mail ma autocomplete="email"').toHaveAttribute(
+      'autocomplete',
+      'email',
+    )
+    await expect(loginPage.password, 'Pole hasła ma type="password"').toHaveAttribute(
+      'type',
+      'password',
+    )
+    await expect(
+      loginPage.password,
+      'Pole hasła ma autocomplete="current-password"',
+    ).toHaveAttribute('autocomplete', 'current-password')
   })
 })
 
@@ -84,7 +96,10 @@ test.describe('Formularz logowania: odpowiedzi serwera', () => {
     const loginPage = new LoginPage(page)
     await loginPage.goto()
     await loginPage.login(USERS.agent.email, USERS.agent.password)
-    await expect(loginPage.submit).toBeDisabled()
+    await expect(
+      loginPage.submit,
+      'Przycisk „Zaloguj się” jest zablokowany w trakcie logowania',
+    ).toBeDisabled()
     release()
     await new AppShell(page).expectSignedInAs(USERS.agent.firstName)
   })
@@ -97,7 +112,10 @@ test.describe('Formularz logowania: odpowiedzi serwera', () => {
     await loginPage.goto()
     await loginPage.login(USERS.agent.email, USERS.agent.password)
     await loginPage.expectError('Za dużo prób. Spróbuj za chwilę.')
-    await expect(loginPage.submit).toBeEnabled()
+    await expect(
+      loginPage.submit,
+      'Przycisk „Zaloguj się” jest znów aktywny po odpowiedzi 429',
+    ).toBeEnabled()
   })
 
   test('U4 błąd serwera 500 pokazuje ogólny komunikat', async ({ page }) => {
@@ -128,7 +146,7 @@ test.describe('Formularz logowania: odpowiedzi serwera', () => {
     await loginPage.expectError('Za dużo prób. Spróbuj za chwilę.')
 
     await loginPage.login(USERS.agent.email, USERS.agent.password)
-    await expect(loginPage.error).toBeHidden()
+    await expect(loginPage.error, 'Komunikat błędu zniknął po poprawnym logowaniu').toBeHidden()
     await new AppShell(page).expectSignedInAs(USERS.agent.firstName)
   })
 
@@ -142,7 +160,10 @@ test.describe('Formularz logowania: odpowiedzi serwera', () => {
     const loginPage = new LoginPage(page)
     await loginPage.goto()
     await loginPage.login(USERS.agent.email, USERS.agent.password)
-    await expect(loginPage.submit.locator('svg.animate-spin')).toBeVisible()
+    await expect(
+      loginPage.submit.locator('svg.animate-spin'),
+      'Na przycisku „Zaloguj się” kręci się wskaźnik ładowania',
+    ).toBeVisible()
     release()
     await new AppShell(page).expectSignedInAs(USERS.agent.firstName)
   })

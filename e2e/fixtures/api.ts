@@ -31,7 +31,7 @@ export interface TicketDto {
 
 export async function findTicketId(ctx: APIRequestContext, subject: string): Promise<string> {
   const res = await ctx.get('/api/tickets', { params: { search: subject, limit: 5 } })
-  expect(res.status()).toBe(200)
+  expect(res.status(), 'GET /api/tickets (szukanie ticketu fixture) zwraca 200').toBe(200)
   const { tickets } = (await res.json()) as { tickets: TicketDto[] }
   const ticket = tickets.find(t => t.subject === subject)
   if (!ticket) throw new Error(`fixture ticket not found: ${subject}`)

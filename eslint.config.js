@@ -52,6 +52,26 @@ export default tseslint.config(
     },
   },
 
+  // --- E2E: every assertion needs a description (second argument of expect) ---
+  // It is shown in the step log, the HTML report and the error when the assertion fails.
+  {
+    files: ['e2e/{tests,api,pages,fixtures}/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.name='expect'][arguments.length<2]",
+          message: "Describe the assertion: expect(value, 'what is checked')",
+        },
+        {
+          selector:
+            "CallExpression[callee.object.name='expect'][callee.property.name=/^(soft|poll)$/][arguments.length<2]",
+          message: "Describe the assertion: expect.soft(value, 'what is checked')",
+        },
+      ],
+    },
+  },
+
   // --- Client-specific (React + browser globals) ---
   {
     files: ['client/**/*.{ts,tsx}'],
