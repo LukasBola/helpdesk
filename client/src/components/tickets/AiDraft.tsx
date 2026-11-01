@@ -16,7 +16,8 @@ export function AiDraft({
 }) {
   const { t } = useTranslation()
   const { data } = useSession()
-  if (!result.draft) return null
+  const draft = result.draft
+  if (!draft) return null
   const translation = draftTranslationFor(result, aiLanguage(getActiveUser(data)))
 
   return (
@@ -28,7 +29,7 @@ export function AiDraft({
         <Sparkles className="h-4 w-4" aria-hidden />
         {t('ai.draft.title')}
       </h3>
-      <p className="whitespace-pre-wrap break-words text-sm">{result.draft}</p>
+      <p className="whitespace-pre-wrap break-words text-sm">{draft}</p>
       {translation && (
         <div className="text-sm text-muted-foreground">
           <p className="text-xs font-medium">{t('ai.draft.translation')}</p>
@@ -40,7 +41,7 @@ export function AiDraft({
           type="button"
           variant="outline"
           className="min-h-11 rounded-xl"
-          onClick={() => onUse(result.draft as string)}
+          onClick={() => onUse(draft)}
         >
           {t('ai.draft.use')}
         </Button>

@@ -279,14 +279,26 @@ describe('TicketPanel', () => {
       const user = userEvent.setup()
       renderRoute('/tickets/t1')
       await user.click(await screen.findByRole('button', { name: 'Analizuj' }))
-      expect(await screen.findByRole('alert')).toBeInTheDocument()
+      expect(await screen.findByText('Coś poszło nie tak. Spróbuj ponownie.')).toBeInTheDocument()
     })
 
     it('shows "AI analizuje…" while pending without results', async () => {
       current = detail({ aiResult: ai({ state: 'PENDING', completedAt: null, summaryPl: null }) })
       renderRoute('/tickets/t1')
-      expect(await screen.findByRole('status', { name: '' })).toBeInTheDocument()
-      expect(screen.getByText('AI analizuje…')).toBeInTheDocument()
+      expect(await screen.findByText('AI analizuje…')).toBeInTheDocument()
+    })
+
+    it('falls back to analysis when READY has no results', async () => {
+      current = detail({ aiResult: ai({ state: 'READY', completedAt: null, summaryPl: null }) })
+      renderRoute('/tickets/t1')
+      expect(await screen.findByRole('button', { name: 'Analizuj' })).toBeInTheDocument()
+      expect(screen.queryByText('AI analizuje…')).not.toBeInTheDocument()
+    })
+
+    it('never requests AI without a click', async () => {
+      renderRoute('/tickets/t1')
+      await screen.findByRole('button', { name: 'Analizuj' })
+      expect(post).not.toHaveBeenCalled()
     })
 
     it('shows "AI niedostępne" with retry when failed', async () => {
@@ -359,10 +371,13 @@ describe('TicketPanel', () => {
     })
 
     it('hides the translation when the customer writes in the agent AI language', async () => {
-      current = detail({ aiResult: ai({ customerLanguage: 'pl' }) })
+      current = detail({
+        aiResult: ai({ customerLanguage: 'pl', draftTranslationPl: 'Dzięki.' }),
+      })
       mockSession({ aiLocale: 'pl' })
       renderRoute('/tickets/t1')
       await screen.findByText('Dziękujemy za zgłoszenie.')
+      expect(screen.queryByText('Dzięki.')).not.toBeInTheDocument()
       expect(screen.queryByText('Tłumaczenie')).not.toBeInTheDocument()
     })
 

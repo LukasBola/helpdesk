@@ -55,7 +55,7 @@ export function ReplyForm({
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-2">
-      {aiDraft?.draft && <AiDraft result={aiDraft} onUse={useDraft} />}
+      {aiDraft && <AiDraft result={aiDraft} onUse={useDraft} />}
       <textarea
         ref={area}
         value={text}
