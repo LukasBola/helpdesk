@@ -128,7 +128,8 @@ async function printUserId(email: string | undefined) {
 }
 
 async function deleteTicket(messageId: string | undefined) {
-  if (!messageId) throw new Error('messageId required')
+  if (!messageId?.startsWith(TICKET_PREFIX))
+    throw new Error(`messageId must start with ${TICKET_PREFIX}`)
   await prisma.ticket.deleteMany({ where: { messageId } })
 }
 
