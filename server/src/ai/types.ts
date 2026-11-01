@@ -37,6 +37,14 @@ export class AiUnavailableError extends Error {
   }
 }
 
+/** The provider will never work as configured; retrying is pointless. */
+export class AiNotImplementedError extends AiUnavailableError {
+  constructor(message: string) {
+    super(message)
+    this.name = 'AiNotImplementedError'
+  }
+}
+
 /** The model answered, but the output is not valid JSON or fails the schema. */
 export class AiInvalidOutputError extends Error {
   constructor(

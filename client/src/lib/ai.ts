@@ -17,6 +17,14 @@ export function draftTranslationFor(r: TicketAiResult, lng: AppLanguage): string
   return lng === 'pl' ? r.draftTranslationPl : r.draftTranslationEn
 }
 
+// Mirrors AI_STALE_PENDING_MS on the server (server/src/jobs/aiTriage.ts).
+export const AI_STALE_PENDING_MS = 15 * 60_000
+
+// A PENDING row this old is considered abandoned; the server re-queues it on the next request.
+export function isStalePending(r: TicketAiResult, now = Date.now()): boolean {
+  return r.state === 'PENDING' && now - Date.parse(r.updatedAt) > AI_STALE_PENDING_MS
+}
+
 export function hasResults(r: TicketAiResult | null): boolean {
   return r !== null && r.completedAt !== null
 }

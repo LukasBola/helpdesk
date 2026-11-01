@@ -1,11 +1,11 @@
-import { type AiProvider, AiUnavailableError } from './types'
+import { AiNotImplementedError, type AiProvider } from './types'
 
 export function createClaudeProvider(): AiProvider {
   return {
     name: 'claude',
     model: 'claude',
     async generate() {
-      throw new AiUnavailableError('Claude provider not implemented')
+      throw new AiNotImplementedError('Claude provider not implemented')
     },
   }
 }

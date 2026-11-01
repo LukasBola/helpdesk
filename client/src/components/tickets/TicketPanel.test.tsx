@@ -283,9 +283,70 @@ describe('TicketPanel', () => {
     })
 
     it('shows "AI analizuje…" while pending without results', async () => {
-      current = detail({ aiResult: ai({ state: 'PENDING', completedAt: null, summaryPl: null }) })
+      current = detail({
+        aiResult: ai({
+          state: 'PENDING',
+          completedAt: null,
+          summaryPl: null,
+          updatedAt: new Date().toISOString(),
+        }),
+      })
       renderRoute('/tickets/t1')
       expect(await screen.findByText('AI analizuje…')).toBeInTheDocument()
+    })
+
+    it('offers retry for a stale PENDING without results and POSTs', async () => {
+      current = detail({
+        aiResult: ai({
+          state: 'PENDING',
+          completedAt: null,
+          summaryPl: null,
+          updatedAt: new Date(Date.now() - 20 * 60_000).toISOString(),
+        }),
+      })
+      post.mockResolvedValue({ data: {} } as never)
+      const user = userEvent.setup()
+      renderRoute('/tickets/t1')
+      await user.click(await screen.findByRole('button', { name: 'Spróbuj ponownie' }))
+      await waitFor(() => expect(post).toHaveBeenCalledWith('/tickets/t1/ai'))
+    })
+
+    it('offers no retry for a fresh PENDING without results', async () => {
+      current = detail({
+        aiResult: ai({
+          state: 'PENDING',
+          completedAt: null,
+          summaryPl: null,
+          updatedAt: new Date().toISOString(),
+        }),
+      })
+      renderRoute('/tickets/t1')
+      await screen.findByText('AI analizuje…')
+      expect(screen.queryByRole('button', { name: 'Spróbuj ponownie' })).not.toBeInTheDocument()
+    })
+
+    it('enables regenerate for a stale PENDING with results', async () => {
+      current = detail({
+        aiResult: ai({
+          state: 'PENDING',
+          updatedAt: new Date(Date.now() - 20 * 60_000).toISOString(),
+        }),
+      })
+      renderRoute('/tickets/t1')
+      expect(await screen.findByRole('button', { name: 'Wygeneruj ponownie' })).toBeEnabled()
+    })
+
+    it('shows the failure reason to the agent', async () => {
+      current = detail({
+        aiResult: ai({
+          state: 'FAILED',
+          completedAt: null,
+          summaryPl: null,
+          error: 'Ollama timeout',
+        }),
+      })
+      renderRoute('/tickets/t1')
+      expect(await screen.findByText('Ollama timeout')).toBeInTheDocument()
     })
 
     it('falls back to analysis when READY has no results', async () => {
@@ -314,7 +375,7 @@ describe('TicketPanel', () => {
     })
 
     it('keeps old results visible while regenerating', async () => {
-      current = detail({ aiResult: ai({ state: 'PENDING' }) })
+      current = detail({ aiResult: ai({ state: 'PENDING', updatedAt: new Date().toISOString() }) })
       renderRoute('/tickets/t1')
       expect(await screen.findByText('Klient nie dostał faktury.')).toBeInTheDocument()
       expect(screen.getByText('Generuję nową wersję…')).toBeInTheDocument()

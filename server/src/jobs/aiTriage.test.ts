@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
+import { createClaudeProvider } from '../ai/claudeProvider'
 import { createFakeProvider } from '../ai/fakeProvider'
 import { prisma } from '../db'
 import { AI_JOB, handleAiJob, requestAiTriage } from './aiTriage'
@@ -61,6 +62,16 @@ describe('handleAiJob', () => {
     expect(row.draft).toBe('previous draft')
     expect(row.error).toBeTruthy()
     expect((row.error as string).length).toBeLessThanOrEqual(500)
+  })
+})
+
+describe('handleAiJob with an unimplemented provider', () => {
+  it('writes FAILED without rethrowing even on the first attempt', async () => {
+    await prisma.ticketAiResult.update({ where: { ticketId }, data: { state: 'PENDING' } })
+    await expect(handleAiJob(job(0), createClaudeProvider())).resolves.toBeUndefined()
+    const row = await prisma.ticketAiResult.findUniqueOrThrow({ where: { ticketId } })
+    expect(row.state).toBe('FAILED')
+    expect(row.error).toContain('not implemented')
   })
 })
 

@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client'
 import type { PgBoss } from 'pg-boss'
 
 import { triageTicket } from '../ai/aiService'
-import type { AiProvider } from '../ai/types'
+import { AiNotImplementedError, type AiProvider } from '../ai/types'
 import { prisma } from '../db'
 import { logger } from '../lib/logger'
 import { getQueue } from './queue'
@@ -11,6 +11,8 @@ export const AI_JOB = 'ai-triage'
 export const AI_JOB_OPTIONS = { retryLimit: 2, retryDelay: 5, retryBackoff: true } as const
 
 const MAX_ERROR_CHARS = 500
+// The window starts at enqueue (not job start): with a long backlog a still-queued row may be
+// re-queued; the only effect is a duplicate computation (last write wins).
 // Exceeds 3 attempts x 120 s timeout + backoff; older PENDING rows are treated as abandoned.
 export const AI_STALE_PENDING_MS = 15 * 60_000
 
@@ -69,7 +71,8 @@ export async function requestAiTriage(
     const boss = await getQueue()
     await ensureAiQueue(boss)
     const data: AiJobData = { ticketId, ...(userId ? { userId } : {}) }
-    await boss.send(AI_JOB, data, { ...AI_JOB_OPTIONS, singletonKey: ticketId })
+    // No singletonKey: it is a no-op on a standard queue; dedup is the DB state machine (markPending).
+    await boss.send(AI_JOB, data, AI_JOB_OPTIONS)
   } catch (err: unknown) {
     // Don't leave the row stuck in PENDING with no job behind it.
     const message = `Enqueue failed: ${err instanceof Error ? err.message : String(err)}`
@@ -98,7 +101,7 @@ export async function handleAiJob(
       data: { ...outcome, state: 'READY', error: null, completedAt: new Date() },
     })
   } catch (err: unknown) {
-    if (job.retryCount < job.retryLimit) throw err
+    if (!(err instanceof AiNotImplementedError) && job.retryCount < job.retryLimit) throw err
     const message = (err instanceof Error ? err.message : String(err)).slice(0, MAX_ERROR_CHARS)
     logger.error({ err, ticketId }, 'AI triage failed')
     await prisma.ticketAiResult.updateMany({

@@ -4,7 +4,7 @@ import i18n from '@/i18n'
 import type { SessionUser } from '@/lib/auth-client'
 import type { TicketAiResult } from '@/lib/tickets-api'
 
-import { aiLanguage, draftTranslationFor, hasResults, summaryFor } from './ai'
+import { aiLanguage, draftTranslationFor, hasResults, isStalePending, summaryFor } from './ai'
 
 const result: TicketAiResult = {
   ticketId: 't1',
@@ -43,5 +43,24 @@ describe('ai helpers', () => {
     expect(hasResults(null)).toBe(false)
     expect(hasResults({ ...result, completedAt: null })).toBe(false)
     expect(hasResults(result)).toBe(true)
+  })
+})
+
+describe('isStalePending', () => {
+  const now = Date.parse('2026-01-01T01:00:00.000Z')
+  const pending = (updatedAt: string): TicketAiResult => ({
+    ...result,
+    state: 'PENDING',
+    updatedAt,
+  })
+
+  it('is true for PENDING older than 15 minutes', () => {
+    expect(isStalePending(pending('2026-01-01T00:30:00.000Z'), now)).toBe(true)
+  })
+  it('is false for a fresh PENDING', () => {
+    expect(isStalePending(pending('2026-01-01T00:50:00.000Z'), now)).toBe(false)
+  })
+  it('is false for non-PENDING states however old', () => {
+    expect(isStalePending({ ...result, state: 'FAILED' }, now)).toBe(false)
   })
 })

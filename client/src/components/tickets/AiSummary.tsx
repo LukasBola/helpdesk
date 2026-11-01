@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { useRequestAi } from '@/hooks/useTickets'
-import { aiLanguage, hasResults, summaryFor } from '@/lib/ai'
+import { aiLanguage, hasResults, isStalePending, summaryFor } from '@/lib/ai'
 import { apiErrorKey } from '@/lib/api-error'
 import { useSession } from '@/lib/auth-client'
 import { getActiveUser } from '@/lib/session'
@@ -18,6 +18,10 @@ export function AiSummary({ ticket }: { ticket: TicketDetail }) {
   const { mutate, isPending, isError, error } = useRequestAi(ticket.id)
   const ai = ticket.aiResult
   const request = () => mutate()
+  const stale = !!ai && isStalePending(ai)
+  const errorDetail = ai?.error && (
+    <span className="block text-xs text-muted-foreground">{ai.error}</span>
+  )
 
   const requestError = isError && (
     <p role="alert" className="text-sm text-destructive">
@@ -39,15 +43,25 @@ export function AiSummary({ ticket }: { ticket: TicketDetail }) {
     body =
       ai.state === 'FAILED' ? (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-2 text-sm">
-          <span>{t('ai.unavailable')}</span>
+          <span>
+            {t('ai.unavailable')}
+            {errorDetail}
+          </span>
           <Button variant="outline" className={BTN} disabled={isPending} onClick={request}>
             {t('common.retry')}
           </Button>
         </div>
       ) : (
-        <p role="status" className="text-sm">
-          {t('ai.pending')}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p role="status" className="text-sm">
+            {t('ai.pending')}
+          </p>
+          {stale && (
+            <Button variant="outline" className={BTN} disabled={isPending} onClick={request}>
+              {t('common.retry')}
+            </Button>
+          )}
+        </div>
       )
   } else {
     const regenerating = ai.state === 'PENDING'
@@ -64,13 +78,14 @@ export function AiSummary({ ticket }: { ticket: TicketDetail }) {
         {ai.state === 'FAILED' && (
           <p role="alert" className="text-xs text-destructive">
             {t('ai.regenerateFailed')}
+            {errorDetail}
           </p>
         )}
         <div>
           <Button
             variant="outline"
             className={BTN}
-            disabled={regenerating || isPending}
+            disabled={(regenerating && !stale) || isPending}
             onClick={request}
           >
             {t('ai.regenerate')}
