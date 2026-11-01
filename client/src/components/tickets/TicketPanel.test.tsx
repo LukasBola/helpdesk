@@ -4,7 +4,7 @@ import { AxiosError } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '@/lib/api'
-import type { AppUser, TicketDetail, TicketListItem } from '@/lib/tickets-api'
+import type { AppUser, TicketAiResult, TicketDetail, TicketListItem } from '@/lib/tickets-api'
 import { mockSession, renderRoute } from '@/test/render'
 
 vi.mock('@/lib/auth-client', async () => (await import('@/test/auth-client-mock')).authClientMock())
@@ -36,6 +36,24 @@ function detail(over: Partial<TicketDetail> = {}): TicketDetail {
     history: [],
     replies: [],
     aiResult: null,
+    ...over,
+  }
+}
+
+function ai(over: Partial<TicketAiResult> = {}): TicketAiResult {
+  return {
+    ticketId: 't1',
+    state: 'READY',
+    error: null,
+    suggestedPriority: 'HIGH',
+    customerLanguage: 'pl',
+    draft: 'Dziękujemy za zgłoszenie.',
+    summaryPl: 'Klient nie dostał faktury.',
+    summaryEn: 'Customer did not get the invoice.',
+    draftTranslationPl: null,
+    draftTranslationEn: 'Thank you for your report.',
+    completedAt: '2026-10-30T09:01:00.000Z',
+    updatedAt: '2026-10-30T09:01:00.000Z',
     ...over,
   }
 }
@@ -234,5 +252,128 @@ describe('TicketPanel', () => {
     await user.click(screen.getByRole('link', { name: /Drugi temat/ }))
     await screen.findByRole('region', { name: 'Drugi temat' })
     expect(screen.getByRole('textbox', { name: 'Odpowiedź' })).toHaveValue('')
+  })
+
+  describe('AI', () => {
+    it("shows the summary in the agent's AI language", async () => {
+      current = detail({ aiResult: ai() })
+      mockSession({ aiLocale: 'en' })
+      renderRoute('/tickets/t1')
+      expect(await screen.findByText('Customer did not get the invoice.')).toBeInTheDocument()
+      expect(screen.queryByText('Klient nie dostał faktury.')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Wygeneruj ponownie' })).toBeEnabled()
+    })
+
+    it('offers analysis when there is no AI result and requests it', async () => {
+      post.mockResolvedValue({ data: {} } as never)
+      const user = userEvent.setup()
+      renderRoute('/tickets/t1')
+      await user.click(await screen.findByRole('button', { name: 'Analizuj' }))
+      await waitFor(() => expect(post).toHaveBeenCalledWith('/tickets/t1/ai'))
+    })
+
+    it('shows the API error when the request fails', async () => {
+      post.mockRejectedValue(
+        new AxiosError('x', 'ERR', undefined, undefined, { status: 429 } as never),
+      )
+      const user = userEvent.setup()
+      renderRoute('/tickets/t1')
+      await user.click(await screen.findByRole('button', { name: 'Analizuj' }))
+      expect(await screen.findByRole('alert')).toBeInTheDocument()
+    })
+
+    it('shows "AI analizuje…" while pending without results', async () => {
+      current = detail({ aiResult: ai({ state: 'PENDING', completedAt: null, summaryPl: null }) })
+      renderRoute('/tickets/t1')
+      expect(await screen.findByRole('status', { name: '' })).toBeInTheDocument()
+      expect(screen.getByText('AI analizuje…')).toBeInTheDocument()
+    })
+
+    it('shows "AI niedostępne" with retry when failed', async () => {
+      current = detail({ aiResult: ai({ state: 'FAILED', completedAt: null, summaryPl: null }) })
+      renderRoute('/tickets/t1')
+      const alert = await screen.findByText('AI niedostępne')
+      expect(alert).toBeInTheDocument()
+      expect(
+        within(alert.closest('[role="alert"]') as HTMLElement).getByRole('button', {
+          name: 'Spróbuj ponownie',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('keeps old results visible while regenerating', async () => {
+      current = detail({ aiResult: ai({ state: 'PENDING' }) })
+      renderRoute('/tickets/t1')
+      expect(await screen.findByText('Klient nie dostał faktury.')).toBeInTheDocument()
+      expect(screen.getByText('Generuję nową wersję…')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Wygeneruj ponownie' })).toBeDisabled()
+    })
+
+    it('says so when regenerating failed but keeps the old results', async () => {
+      current = detail({ aiResult: ai({ state: 'FAILED' }) })
+      renderRoute('/tickets/t1')
+      expect(await screen.findByText('Klient nie dostał faktury.')).toBeInTheDocument()
+      expect(screen.getByText('Nie udało się wygenerować ponownie')).toBeInTheDocument()
+    })
+
+    it('shows the priority suggestion only when it differs and applies it via PATCH', async () => {
+      current = detail({ priority: 'HIGH', aiResult: ai({ suggestedPriority: 'URGENT' }) })
+      patch.mockResolvedValue({ data: {} } as never)
+      const user = userEvent.setup()
+      renderRoute('/tickets/t1')
+      expect(await screen.findByText('AI proponuje: Pilny')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Zastosuj' }))
+      await waitFor(() => expect(patch).toHaveBeenCalledWith('/tickets/t1', { priority: 'URGENT' }))
+    })
+
+    it('hides the priority suggestion when it equals the current priority', async () => {
+      current = detail({ priority: 'HIGH', aiResult: ai({ suggestedPriority: 'HIGH' }) })
+      renderRoute('/tickets/t1')
+      await screen.findByText('Klient nie dostał faktury.')
+      expect(screen.queryByRole('button', { name: 'Zastosuj' })).not.toBeInTheDocument()
+    })
+
+    it('shows the draft above an empty reply form', async () => {
+      current = detail({ aiResult: ai() })
+      renderRoute('/tickets/t1')
+      expect(await screen.findByText('Dziękujemy za zgłoszenie.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Użyj szkicu' })).toBeInTheDocument()
+    })
+
+    it('hides the draft once the ticket has a reply', async () => {
+      current = detail({
+        aiResult: ai(),
+        replies: [
+          {
+            id: 'r1',
+            body: 'Wysyłam',
+            sentAt: '2026-10-30T10:42:00.000Z',
+            user: { id: 'u1', name: 'Anna Kowalska' },
+          },
+        ],
+      })
+      renderRoute('/tickets/t1')
+      await screen.findByText('Klient nie dostał faktury.')
+      expect(screen.queryByText('Dziękujemy za zgłoszenie.')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Użyj szkicu' })).not.toBeInTheDocument()
+    })
+
+    it('hides the translation when the customer writes in the agent AI language', async () => {
+      current = detail({ aiResult: ai({ customerLanguage: 'pl' }) })
+      mockSession({ aiLocale: 'pl' })
+      renderRoute('/tickets/t1')
+      await screen.findByText('Dziękujemy za zgłoszenie.')
+      expect(screen.queryByText('Tłumaczenie')).not.toBeInTheDocument()
+    })
+
+    it('shows the translation when the customer writes in another language', async () => {
+      current = detail({
+        aiResult: ai({ customerLanguage: 'en', draft: 'Thanks.', draftTranslationPl: 'Dzięki.' }),
+      })
+      mockSession({ aiLocale: 'pl' })
+      renderRoute('/tickets/t1')
+      expect(await screen.findByText('Tłumaczenie')).toBeInTheDocument()
+      expect(screen.getByText('Dzięki.')).toBeInTheDocument()
+    })
   })
 })

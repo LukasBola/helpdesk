@@ -5,17 +5,35 @@ import { AxiosError } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '@/lib/api'
+import type { TicketAiResult } from '@/lib/tickets-api'
+import { mockSession } from '@/test/render'
 
 import { ReplyForm } from './ReplyForm'
 
+vi.mock('@/lib/auth-client', async () => (await import('@/test/auth-client-mock')).authClientMock())
 vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), patch: vi.fn(), post: vi.fn() } }))
 const post = vi.mocked(api.post)
 
-function setup() {
+const aiDraft: TicketAiResult = {
+  ticketId: 't1',
+  state: 'READY',
+  error: null,
+  suggestedPriority: null,
+  customerLanguage: 'pl',
+  draft: 'Szkic AI do wysłania.',
+  summaryPl: null,
+  summaryEn: null,
+  draftTranslationPl: null,
+  draftTranslationEn: null,
+  completedAt: '2026-10-30T09:01:00.000Z',
+  updatedAt: '2026-10-30T09:01:00.000Z',
+}
+
+function setup(draft?: TicketAiResult) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <ReplyForm ticketId="t1" />
+      <ReplyForm ticketId="t1" aiDraft={draft} />
     </QueryClientProvider>,
   )
   return {
@@ -27,6 +45,8 @@ function setup() {
 describe('ReplyForm', () => {
   beforeEach(() => {
     post.mockReset()
+    vi.restoreAllMocks()
+    mockSession({})
   })
 
   it('disables send for whitespace and while pending; one POST per click', async () => {
@@ -87,5 +107,27 @@ describe('ReplyForm', () => {
   it('shows the thread-only note', () => {
     setup()
     expect(screen.getByText(/klient nie dostanie maila/)).toBeInTheDocument()
+  })
+
+  it('"Użyj szkicu" fills an empty field', async () => {
+    const confirm = vi.spyOn(window, 'confirm')
+    const user = userEvent.setup()
+    const { box } = setup(aiDraft)
+    await user.click(screen.getByRole('button', { name: 'Użyj szkicu' }))
+    expect(box).toHaveValue('Szkic AI do wysłania.')
+    expect(confirm).not.toHaveBeenCalled()
+  })
+
+  it('asks before replacing typed text', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const user = userEvent.setup()
+    const { box } = setup(aiDraft)
+    await user.type(box, 'Moje')
+    await user.click(screen.getByRole('button', { name: 'Użyj szkicu' }))
+    expect(confirm).toHaveBeenCalledTimes(1)
+    expect(box).toHaveValue('Moje')
+    confirm.mockReturnValue(true)
+    await user.click(screen.getByRole('button', { name: 'Użyj szkicu' }))
+    expect(box).toHaveValue('Szkic AI do wysłania.')
   })
 })

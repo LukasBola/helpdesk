@@ -107,5 +107,25 @@
     "MEDIUM": "Średni",
     "HIGH": "Wysoki",
     "URGENT": "Pilny"
+  },
+  "ai": {
+    "none": "Brak analizy AI",
+    "analyze": "Analizuj",
+    "pending": "AI analizuje…",
+    "unavailable": "AI niedostępne",
+    "regenerate": "Wygeneruj ponownie",
+    "regenerating": "Generuję nową wersję…",
+    "regenerateFailed": "Nie udało się wygenerować ponownie",
+    "summary": "Streszczenie AI",
+    "priority": {
+      "suggestion": "AI proponuje: {{priority}}",
+      "apply": "Zastosuj"
+    },
+    "draft": {
+      "title": "Szkic AI",
+      "use": "Użyj szkicu",
+      "translation": "Tłumaczenie",
+      "replaceConfirm": "Zastąpić wpisany tekst szkicem AI?"
+    }
   }
 }

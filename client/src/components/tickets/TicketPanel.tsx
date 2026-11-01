@@ -1,6 +1,7 @@
 import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 
+import { AiSummary } from '@/components/tickets/AiSummary'
 import { ReplyForm } from '@/components/tickets/ReplyForm'
 import { TicketControls } from '@/components/tickets/TicketControls'
 import { TicketThread } from '@/components/tickets/TicketThread'
@@ -70,9 +71,13 @@ export function TicketPanel({ ticketId }: { ticketId: string }) {
         </div>
         <TicketControls ticket={ticket} />
       </header>
+      <AiSummary ticket={ticket} />
       <TicketThread ticket={ticket} />
       <div className={CARD}>
-        <ReplyForm ticketId={ticket.id} />
+        <ReplyForm
+          ticketId={ticket.id}
+          aiDraft={ticket.replies.length === 0 ? ticket.aiResult : null}
+        />
       </div>
     </section>
   )
