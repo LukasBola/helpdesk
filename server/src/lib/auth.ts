@@ -42,6 +42,11 @@ export const auth = betterAuth({
         required: false,
         input: true,
       },
+      aiLocale: {
+        type: ['pl', 'en'],
+        required: false,
+        input: true,
+      },
     },
   },
   databaseHooks: {
@@ -75,6 +80,9 @@ export const auth = betterAuth({
       }
       if ('locale' in body && !SUPPORTED_LOCALES.some(locale => locale === body.locale)) {
         throw new APIError('BAD_REQUEST', { message: 'Invalid locale' })
+      }
+      if ('aiLocale' in body && !SUPPORTED_LOCALES.some(locale => locale === body.aiLocale)) {
+        throw new APIError('BAD_REQUEST', { message: 'Invalid aiLocale' })
       }
       return { context: { ...ctx, body } }
     }),

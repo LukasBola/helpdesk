@@ -2,6 +2,8 @@ import type { NextFunction } from 'express'
 import { Router } from 'express'
 import { z } from 'zod'
 
+import { requestAiTriage } from '../jobs/aiTriage'
+import { aiRateLimit } from '../middleware/aiRateLimit'
 import { requireAuth } from '../middleware/auth'
 import {
   createReply,
@@ -99,6 +101,20 @@ router.post('/:id/replies', async (req, res, next: NextFunction) => {
       return
     }
     res.status(201).json(reply)
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post<{ id: string }>('/:id/ai', aiRateLimit, async (req, res, next: NextFunction) => {
+  try {
+    const ticket = await findTicketById(req.params.id)
+    if (!ticket) {
+      res.status(404).json({ error: 'Not found' })
+      return
+    }
+    await requestAiTriage(ticket.id, req.currentUser?.id)
+    res.status(202).json({ state: 'PENDING' })
   } catch (err) {
     next(err)
   }

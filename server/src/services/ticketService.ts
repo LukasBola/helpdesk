@@ -64,6 +64,7 @@ export async function findTicketById(id: string) {
   return prisma.ticket.findUnique({
     where: { id },
     include: {
+      aiResult: true,
       assignee: { select: { id: true, name: true, email: true } },
       history: {
         orderBy: { createdAt: 'asc' },
