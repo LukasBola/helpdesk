@@ -41,7 +41,7 @@ Logowanie realizuje jeden własny reporter (`e2e/reporters/step-log.ts`) nasłuc
 ## Dowody
 
 - `e2e/reporters/step-log.ts` – reporter, format i załącznik
-- `e2e/reporters/tests/step-log.spec.ts` – kontrakt reportera (11 testów)
+- `e2e/reporters/tests/step-log.spec.ts` – kontrakt reportera (12 testów)
 - `e2e/pages/step.ts` – dekorator `@step`
 - `eslint.config.js` – reguła wymagająca opisu w `expect`
 - `docs/superpowers/specs/2026-10-31-playwright-logging-design.md` – spec po zmianie podejścia

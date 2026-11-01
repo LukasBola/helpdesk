@@ -17,16 +17,17 @@ Pierwsza wersja (Codex) owijała każdą akcję i asercję w funkcje logujące (
 
 ## Format linii
 
-Jedna linia = jedno zdarzenie, stałe kolumny:
+Jedna linia = jedno zdarzenie. Kolumny o stałej szerokości (czas ISO 8601 UTC, poziom, id, symbol, faza, wynik, czas trwania), potem część drzewa: rodzaj wcięty według zagnieżdżenia, treść i `@ plik:linia`:
 
 ```text
-czas (ISO 8601 UTC)      poziom id        faza  wynik     czas trwania rodzaj treść
-2026-11-01T10:15:02.297Z INFO  T001.S004 START -                   - ASSERT Powitanie „Dzień dobry,” jest widoczne (e2e/pages/AppShell.ts:31)
-2026-11-01T10:15:07.307Z ERROR T001.S004 END   FAIL          5010 ms ASSERT Powitanie „Dzień dobry,” jest widoczne (e2e/pages/AppShell.ts:31)
-2026-11-01T10:15:07.307Z ERROR T001.S004 ERROR -                   - ASSERT ↳ Error: … | Expected: visible | Error: element(s) not found
+2026-11-01T10:15:02.297Z INFO  T001.S004 ▸ START                            ASSERT Powitanie „Dzień dobry,” jest widoczne [getByText('Dzień dobry,')] @ e2e/pages/AppShell.ts:31
+2026-11-01T10:15:07.307Z ERROR T001.S004 ✗ END   FAIL          5010 ms      ASSERT Powitanie „Dzień dobry,” jest widoczne [getByText('Dzień dobry,')] @ e2e/pages/AppShell.ts:31
+2026-11-01T10:15:07.307Z ERROR T001.S004 ↳ ERROR                            ASSERT Error: … | Expected: visible | Error: element(s) not found
 ```
 
-- `T001` to jedna próba testu (retry dostaje nowy numer), `T001.S004` to krok w niej. START i END mają to samo id i identyczną treść, zakończoną lokalizacją w kodzie.
+- Symbole to zwykłe znaki Unicode (nie emoji), o szerokości jednej kolumny: `▸` start, `✓` pass, `✗` porażka, `⊘` pominięty, `↳` szczegół błędu.
+- Kolory ANSI tylko w terminalu i w CI; wyjście przekierowane do pliku lub potoku jest bez kolorów, `NO_COLOR` je wyłącza, `FORCE_COLOR` włącza. Załącznik jest zawsze czystym tekstem.
+- `T001` to jedna próba testu (retry dostaje nowy numer), `T001.S004` to krok w niej. START i END mają to samo id i identyczną część drzewa (rodzaj, treść, lokalizacja).
 - Wyniki: `PASS`, `FAIL`, `TIMEOUT`, `INTERRUPTED`, `SKIPPED`, `INCOMPLETE` (krok bez END, np. przy timeoucie). Niedokończony krok nigdy nie jest `PASS`.
 - Poziom: `INFO`, `WARN` (pominięty), `ERROR` (porażka).
 - Global setup loguje w tym samym formacie pod id `G000`.

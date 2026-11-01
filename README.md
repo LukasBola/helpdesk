@@ -263,16 +263,18 @@ Structure: `e2e/pages/` holds the page objects (`LoginPage`, `AppShell`), `e2e/f
 
 Tests are plain Playwright code: no logging calls inside tests, page objects or helpers. The step-log reporter (`e2e/reporters/step-log.ts`) listens to Playwright's own step events and writes one line per event for every test, hook, `test.step`, Playwright action and assertion.
 
-Each line has fixed columns: timestamp (ISO 8601, UTC), level (`INFO`, `WARN`, `ERROR`), id, phase, outcome, duration, kind (`TEST`, `HOOK`, `STEP`, `ACTION`, `ASSERT`, `GLOBAL`) and text. `START` and `END` of the same step have the same id and exactly the same text, and the text ends with the source location:
+Each line has fixed-width columns: timestamp (ISO 8601, UTC), level (`INFO`, `WARN`, `ERROR`), id, symbol, phase, outcome and duration. Then comes the tree part: kind (`TEST`, `HOOK`, `STEP`, `ACTION`, `ASSERT`, `GLOBAL`), indented by nesting, text and `@ file:line`. `START` and `END` of the same step have the same id and exactly the same tree part:
 
 ```text
-2026-11-01T10:15:02.294Z INFO  T001.S003 START -                   - STEP   AppShell.expectSignedInAs (e2e/tests/session.spec.ts:7)
-2026-11-01T10:15:02.297Z INFO  T001.S004 START -                   - ASSERT   Expect "toBeVisible" getByText('Dzień dobry,') (e2e/pages/AppShell.ts:31)
-2026-11-01T10:15:07.307Z ERROR T001.S004 END   FAIL          5010 ms ASSERT   Expect "toBeVisible" getByText('Dzień dobry,') (e2e/pages/AppShell.ts:31)
-2026-11-01T10:15:07.307Z ERROR T001.S004 ERROR -                   - ASSERT   ↳ Error: expect(locator).toBeVisible() failed | Expected: visible | Error: element(s) not found
-2026-11-01T10:15:07.308Z ERROR T001.S003 END   FAIL          5014 ms STEP   AppShell.expectSignedInAs (e2e/tests/session.spec.ts:7)
+2026-11-01T10:15:02.294Z INFO  T001.S003 ▸ START                          STEP   AppShell.expectSignedInAs @ e2e/tests/session.spec.ts:7
+2026-11-01T10:15:02.297Z INFO  T001.S004 ▸ START                            ASSERT Powitanie „Dzień dobry,” jest widoczne [getByText('Dzień dobry,')] @ e2e/pages/AppShell.ts:31
+2026-11-01T10:15:07.307Z ERROR T001.S004 ✗ END   FAIL          5010 ms      ASSERT Powitanie „Dzień dobry,” jest widoczne [getByText('Dzień dobry,')] @ e2e/pages/AppShell.ts:31
+2026-11-01T10:15:07.307Z ERROR T001.S004 ↳ ERROR                            ASSERT Error: Powitanie „Dzień dobry,” jest widoczne | Expected: visible | Error: element(s) not found
+2026-11-01T10:15:07.308Z ERROR T001.S003 ✗ END   FAIL          5014 ms    STEP   AppShell.expectSignedInAs @ e2e/tests/session.spec.ts:7
 ```
 
+- **Symbols:** `▸` start, `✓` pass, `✗` fail/timeout/incomplete, `⊘` skipped, `↳` error detail. They are plain Unicode text characters (not emoji), one column wide in a terminal and in CI logs.
+- **Colors:** ANSI colors only in a terminal or CI (GitHub Actions shows them). Piped or redirected output has none; `NO_COLOR=1` turns them off, `FORCE_COLOR=1` on. The `step-log.txt` attachment is always plain text.
 - **Id:** `T001` is one test attempt (each retry gets a new one), `T001.S004` is a step in it. Lines of parallel tests interleave; filter one attempt with `grep T001` or one step with `grep T001.S004`.
 - **Outcome:** `PASS`, `FAIL`, `TIMEOUT`, `INTERRUPTED`, `SKIPPED`, or `INCOMPLETE` for a step that never ended (timeout, killed worker); an unfinished step is never shown as `PASS`.
 - **Failures:** at the end of the run every failed test is listed with the innermost failed step (id, kind, text, location), its step path, the trace command and the full Playwright error (expected/received, call log).

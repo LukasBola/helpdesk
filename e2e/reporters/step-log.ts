@@ -11,7 +11,16 @@ import type {
   TestStep,
 } from '@playwright/test/reporter'
 
-import { attemptId, formatRecord, type Kind, type LogRecord, type Outcome, stepId } from './format'
+import {
+  attemptId,
+  formatRecord,
+  type Kind,
+  type LogRecord,
+  type Outcome,
+  paint,
+  stepId,
+  useColor,
+} from './format'
 import { mask } from './mask'
 
 // Live START/END log of tests and steps, built on Playwright's Reporter API (an observer
@@ -74,7 +83,7 @@ export default class StepLogReporter implements Reporter {
     this.rootDir = config.rootDir
     const tests = suite.allTests()
     if (process.argv.includes('--list')) {
-      for (const test of tests) this.print(this.describe(test))
+      for (const test of tests) this.print(mask(this.describe(test)))
       this.print(`Total: ${tests.length} tests`)
       return
     }
@@ -94,7 +103,7 @@ export default class StepLogReporter implements Reporter {
       id: attemptId(attempt.number),
       phase: 'START',
       kind: 'TEST',
-      text: this.testText(test, result),
+      ...this.testText(test, result),
     })
   }
 
@@ -118,7 +127,8 @@ export default class StepLogReporter implements Reporter {
       phase: 'ERROR',
       outcome: undefined,
       durationMs: undefined,
-      text: `${record.text.match(/^ */)?.[0]}↳ ${errorSummary(step.error)}`,
+      text: errorSummary(step.error),
+      location: undefined,
     })
     // Children end before their parents: the first failed step is the innermost one.
     attempt.failedStep ??= this.failedStep(record, step)
@@ -155,7 +165,7 @@ export default class StepLogReporter implements Reporter {
       outcome: OUTCOME[result.status],
       durationMs: now - result.startTime.getTime(),
       kind: 'TEST',
-      text: this.testText(test, result),
+      ...this.testText(test, result),
     })
 
     // Attached to this attempt in the HTML report, next to its trace.
@@ -168,7 +178,7 @@ export default class StepLogReporter implements Reporter {
   }
 
   onError(error: TestError) {
-    this.print(`ERROR ${mask(error.message ?? error.value ?? '')}`)
+    this.print(paint('red', `ERROR ${mask(plain(error.message ?? error.value ?? ''))}`))
   }
 
   onEnd(result: FullResult) {
@@ -180,29 +190,33 @@ export default class StepLogReporter implements Reporter {
       count[outcome]++
       if (outcome === 'unexpected') failures.push(failure)
     }
-    if (failures.length) this.print(`\nFailures (${failures.length}):`)
+    if (failures.length)
+      this.print(`\n${paint('red', paint('bold', `Failures (${failures.length}):`))}`)
     failures.forEach((failure, index) => this.print(this.failureReport(index + 1, failure)))
-    this.print(
-      `\nRun ${result.status.toUpperCase()} in ${Math.round(result.duration)} ms: ` +
-        `${count.expected} passed, ${count.unexpected} failed, ${count.flaky} flaky, ${count.skipped} skipped`,
-    )
+    const passed = result.status === 'passed'
+    const summary =
+      `${passed ? '✓' : '✗'} Run ${result.status.toUpperCase()} in ${Math.round(result.duration)} ms: ` +
+      `${count.expected} passed, ${count.unexpected} failed, ${count.flaky} flaky, ${count.skipped} skipped`
+    this.print(`\n${paint(passed ? 'green' : 'red', paint('bold', summary))}`)
   }
 
   private failureReport(index: number, { test, result, attempt }: Failure): string {
     const trace = result.attachments.find(attachment => attachment.name === 'trace')?.path
     const step = attempt.failedStep
-    const message = result.errors
-      .map(error => plain(error.message ?? error.value ?? ''))
-      .join('\n\n')
+    const message = mask(
+      result.errors.map(error => plain(error.message ?? error.value ?? '')).join('\n\n'),
+    )
     const lines = [
-      `\n${index}) ${attemptId(attempt.number)} ${this.testText(test, result)}`,
+      `\n${paint('bold', `${index}) ${attemptId(attempt.number)} ${mask(this.testLabel(test, result))}`)}`,
       `   Status:      ${OUTCOME[result.status]}`,
-      step ? `   Failed step: ${step.id} ${step.kind} ${step.text}` : undefined,
-      step ? `   Step path:   ${step.path}` : undefined,
+      step
+        ? `   Failed step: ${paint('red', mask(`${step.id} ${step.kind} ${step.text}`))}`
+        : undefined,
+      step ? `   Step path:   ${mask(step.path)}` : undefined,
       `   Log:         grep ${attemptId(attempt.number)} in the terminal, or step-log.txt in the HTML report`,
       trace ? `   Trace:       pnpm exec playwright show-trace ${this.relative(trace)}` : undefined,
       '   Error:',
-      ...message.split('\n').map(line => `     ${line}`),
+      ...message.split('\n').map(line => `     ${paint('red', line)}`),
     ]
     return lines.filter(line => line !== undefined).join('\n')
   }
@@ -215,10 +229,7 @@ export default class StepLogReporter implements Reporter {
     durationMs?: number,
   ): LogRecord {
     const start = step.startTime.getTime()
-    const where = step.location
-      ? ` (${this.relative(step.location.file)}:${step.location.line})`
-      : ''
-    const target = step.subtitle ? ` ${step.subtitle}` : ''
+    const target = step.subtitle ? ` [${step.subtitle}]` : ''
     return {
       time: phase === 'START' ? step.startTime : new Date(start + (durationMs ?? 0)),
       id: attempt.steps.get(step) ?? '?',
@@ -226,12 +237,22 @@ export default class StepLogReporter implements Reporter {
       outcome,
       durationMs,
       kind: KIND[step.category],
-      text: `${'  '.repeat(this.depth(step))}${step.title}${target}${where}`,
+      depth: this.depth(step) + 1, // one level under its test
+      text: `${step.title}${target}`,
+      location: step.location
+        ? `${this.relative(step.location.file)}:${step.location.line}`
+        : undefined,
     }
   }
 
   private failedStep(record: LogRecord, step: TestStep): FailedStep {
-    return { id: record.id, kind: record.kind, text: record.text.trim(), path: this.stepPath(step) }
+    const where = record.location ? ` @ ${record.location}` : ''
+    return {
+      id: record.id,
+      kind: record.kind,
+      text: `${record.text}${where}`,
+      path: this.stepPath(step),
+    }
   }
 
   private visible(step: TestStep): boolean {
@@ -255,14 +276,30 @@ export default class StepLogReporter implements Reporter {
       .join(' › ')
   }
 
-  private testText(test: TestCase, result: TestResult): string {
-    return `${this.describe(test)} (worker ${result.workerIndex}, retry ${result.retry})`
+  // Title with project, worker and retry as the text; the test's file:line as the location.
+  private testText(test: TestCase, result: TestResult): Pick<LogRecord, 'text' | 'location'> {
+    return {
+      text: `${this.title(test)} (worker ${result.workerIndex}, retry ${result.retry})`,
+      location: this.where(test),
+    }
+  }
+
+  private testLabel(test: TestCase, result: TestResult): string {
+    const { text, location } = this.testText(test, result)
+    return `${text} @ ${location}`
   }
 
   private describe(test: TestCase): string {
+    return `${this.title(test)} @ ${this.where(test)}`
+  }
+
+  private title(test: TestCase): string {
     const project = test.parent.project()?.name
-    const titles = test.titlePath().slice(3).join(' › ')
-    return `${project ? `[${project}] ` : ''}${this.relative(test.location.file)}:${test.location.line} › ${titles}`
+    return `${project ? `[${project}] ` : ''}${test.titlePath().slice(3).join(' › ')}`
+  }
+
+  private where(test: TestCase): string {
+    return `${this.relative(test.location.file)}:${test.location.line}`
   }
 
   // Paths relative to the repository root, so they are clickable in the editor terminal.
@@ -272,19 +309,21 @@ export default class StepLogReporter implements Reporter {
 
   private write(attempt: Attempt, toTerminal: boolean, record: LogRecord) {
     const line = formatRecord(record)
-    attempt.lines.push(line)
-    if (toTerminal) this.print(line)
+    attempt.lines.push(line.plain) // the attachment is always plain text
+    if (toTerminal) this.print(useColor ? line.colored : line.plain)
   }
 
   // console.log from tests and the app: kept, tagged with the attempt it belongs to.
   private passThrough(stream: NodeJS.WriteStream, chunk: string | Buffer, result?: TestResult) {
     const attempt = result && this.running.get(result)
     const prefix = attempt ? `${attemptId(attempt.number)} ` : ''
-    stream.write(mask(prefix + chunk.toString()))
+    const text = mask(prefix + chunk.toString())
+    stream.write(useColor ? text : plain(text))
   }
 
+  // Callers pass text that is already masked: masking after painting could cut an ANSI code.
   private print(text: string) {
-    process.stdout.write(`${mask(text)}\n`)
+    process.stdout.write(`${useColor ? text : plain(text)}\n`)
   }
 }
 
