@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 
 import autoResponder from '../__fixtures__/postmark/auto-responder.json'
 import deliveryReceipt from '../__fixtures__/postmark/delivery-receipt.json'
@@ -13,7 +13,8 @@ import plusAddress from '../__fixtures__/postmark/plus-address.json'
 import unicodeSubject from '../__fixtures__/postmark/unicode-subject.json'
 import { prisma } from '../db'
 import type { PostmarkPayload } from './processEmail'
-import { parsePostmarkPayload } from './processEmail'
+import { createTicketFromEmail, parsePostmarkPayload } from './processEmail'
+import { stopQueue } from './queue'
 
 describe('parsePostmarkPayload', () => {
   it('extracts ticket fields from Postmark payload', () => {
@@ -172,5 +173,38 @@ describe('expanded fixture tests', () => {
     const result = parsePostmarkPayload(plusAddress as PostmarkPayload)
     expect(result?.customerEmail).toBe('student@example.com')
     expect(result?.messageId).toBe('fixture-plus@mail.postmarkapp.com')
+  })
+})
+
+describe('createTicketFromEmail AI hook', () => {
+  const ids = ['ai-hook-1@test.com', 'ai-hook-2@test.com']
+  const payload = (MessageID: string): PostmarkPayload => ({
+    MessageID,
+    From: 'c@test.com',
+    FromFull: { Email: 'c@test.com', Name: 'Customer' },
+    Subject: 'AI hook',
+    TextBody: 'Please help.',
+    HtmlBody: '',
+    To: 'support@helpdesk.com',
+  })
+
+  afterAll(async () => {
+    await prisma.ticket.deleteMany({ where: { messageId: { in: ids } } })
+    await stopQueue()
+  })
+
+  it('queues AI triage for a new ticket', async () => {
+    await createTicketFromEmail(payload(ids[0]))
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { messageId: ids[0] } })
+    const result = await prisma.ticketAiResult.findUnique({ where: { ticketId: ticket.id } })
+    expect(result?.state).toBe('PENDING')
+  })
+
+  it('ticket is created even when AI enqueue fails', async () => {
+    const failingRequest = vi.fn().mockRejectedValue(new Error('queue down'))
+    await createTicketFromEmail(payload(ids[1]), failingRequest)
+    expect(failingRequest).toHaveBeenCalledOnce()
+    const ticket = await prisma.ticket.findUnique({ where: { messageId: ids[1] } })
+    expect(ticket).not.toBeNull()
   })
 })
