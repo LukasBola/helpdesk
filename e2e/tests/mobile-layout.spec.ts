@@ -23,14 +23,17 @@ async function expectFitsAndTranslated(page: Page) {
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
   )
-  expect(overflow).toBeLessThanOrEqual(0)
+  expect(overflow, 'Strona nie przewija się w poziomie').toBeLessThanOrEqual(0)
   const texts = await page.locator('body *').evaluateAll(nodes =>
     nodes
       .filter(n => n.children.length === 0)
       .map(n => (n.textContent ?? '').trim())
       .filter(Boolean),
   )
-  expect(texts.filter(text => RAW_KEY.test(text))).toEqual([])
+  expect(
+    texts.filter(text => RAW_KEY.test(text)),
+    'Brak surowych kluczy tłumaczeń',
+  ).toEqual([])
 }
 
 for (const locale of ['pl', 'en'] as const) {
@@ -45,13 +48,16 @@ for (const locale of ['pl', 'en'] as const) {
 
     await page.goto('/tickets?status=all')
     const row = page.getByRole('link', { name: subject })
-    await expect(row).toBeVisible()
-    await expect(page.locator('html')).toHaveAttribute('lang', locale)
+    await expect(row, 'Wiersz ticketu na liście jest widoczny').toBeVisible()
+    await expect(page.locator('html'), `Lista ma lang="${locale}"`).toHaveAttribute('lang', locale)
     await expectFitsAndTranslated(page)
 
     await page.goto(`/tickets/${id}?status=all`)
-    await expect(page.getByRole('region', { name: subject })).toBeVisible()
-    await expect(page.locator('html')).toHaveAttribute('lang', locale)
+    await expect(
+      page.getByRole('region', { name: subject }),
+      'Panel ticketu jest widoczny',
+    ).toBeVisible()
+    await expect(page.locator('html'), `Ticket ma lang="${locale}"`).toHaveAttribute('lang', locale)
     await expectFitsAndTranslated(page)
   })
 }

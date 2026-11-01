@@ -13,16 +13,25 @@ test.describe('Skrzynka ticketów', () => {
     await tickets.goto('status=all')
     await tickets.search(subject)
     await tickets.open(subject)
-    await expect(tickets.row(subject)).toHaveAttribute('aria-current', 'true')
+    await expect(tickets.row(subject), 'Otwarty ticket jest zaznaczony na liście').toHaveAttribute(
+      'aria-current',
+      'true',
+    )
 
     await tickets.reply(subject, 'Dzień dobry, sprawdzamy.')
 
-    await expect(tickets.statusSelect(subject)).toHaveText('W toku')
-    await expect(tickets.thread.getByText('Dzień dobry, sprawdzamy.').first()).toBeVisible()
+    await expect(tickets.statusSelect(subject), 'Status po odpowiedzi to „W toku”').toHaveText(
+      'W toku',
+    )
+    await expect(
+      tickets.thread.getByText('Dzień dobry, sprawdzamy.').first(),
+      'Odpowiedź jest w wątku',
+    ).toBeVisible()
     await expect(
       tickets.thread.getByText(`${USERS.agent.name} · Status: Otwarty → W toku`).first(),
+      'Zmiana statusu jest w historii wątku',
     ).toBeVisible()
-    await expect(page).toHaveURL(/\/tickets\/[^/?]+\?/)
+    await expect(page, 'URL ticketu zachowuje query string').toHaveURL(/\/tickets\/[^/?]+\?/)
   })
 
   test('przypisanie ticketu zostawia wpis w historii', async ({ page }) => {
@@ -35,11 +44,14 @@ test.describe('Skrzynka ticketów', () => {
     await tickets.assigneeSelect(subject).click()
     await page.getByRole('option', { name: USERS.admin.name }).click()
 
-    await expect(tickets.assigneeSelect(subject)).toHaveText(USERS.admin.name)
+    await expect(tickets.assigneeSelect(subject), 'Ticket przypisany do administratora').toHaveText(
+      USERS.admin.name,
+    )
     await expect(
       tickets.thread.getByText(
         `${USERS.agent.name} · Przypisanie: Nieprzypisany → ${USERS.admin.name}`,
       ),
+      'Zmiana przypisania jest w historii wątku',
     ).toBeVisible()
   })
 
@@ -52,11 +64,20 @@ test.describe('Skrzynka ticketów', () => {
 
     await page.reload()
 
-    await expect(page).toHaveURL(url)
-    await expect(tickets.panel(subject)).toBeVisible()
-    await expect(tickets.row(subject)).toHaveAttribute('aria-current', 'true')
-    await expect(page.getByRole('combobox', { name: 'Priorytet' }).first()).toHaveText('Pilny')
-    await expect(tickets.row(TICKETS.openLow.subject)).toHaveCount(0)
+    await expect(page, 'URL po odświeżeniu bez zmian').toHaveURL(url)
+    await expect(tickets.panel(subject), 'Panel ticketu wraca po odświeżeniu').toBeVisible()
+    await expect(tickets.row(subject), 'Zaznaczenie ticketu wraca po odświeżeniu').toHaveAttribute(
+      'aria-current',
+      'true',
+    )
+    await expect(
+      page.getByRole('combobox', { name: 'Priorytet' }).first(),
+      'Filtr priorytetu wraca jako „Pilny”',
+    ).toHaveText('Pilny')
+    await expect(
+      tickets.row(TICKETS.openLow.subject),
+      'Ticket o niskim priorytecie jest odfiltrowany',
+    ).toHaveCount(0)
   })
 
   // Regression: the panel kept its state between tickets, so a draft could be sent to the wrong one.
@@ -73,7 +94,10 @@ test.describe('Skrzynka ticketów', () => {
 
     await tickets.open(first)
 
-    await expect(tickets.replyBox(first)).toHaveValue('')
+    await expect(
+      tickets.replyBox(first),
+      'Pole odpowiedzi pierwszego ticketu jest puste',
+    ).toHaveValue('')
   })
 
   test.describe('widok mobilny', () => {
@@ -84,12 +108,14 @@ test.describe('Skrzynka ticketów', () => {
       const tickets = new TicketsPage(page)
       await tickets.goto('priority=URGENT&status=all')
       await tickets.open(subject)
-      await expect(page).toHaveURL(/\/tickets\/[^/?]+\?/)
+      await expect(page, 'URL ticketu zachowuje query string').toHaveURL(/\/tickets\/[^/?]+\?/)
 
       await tickets.backToList.click()
 
-      await expect(page).toHaveURL(/\/tickets\?(?=.*priority=URGENT)(?=.*status=all)/)
-      await expect(tickets.row(subject)).toBeVisible()
+      await expect(page, 'Lista ma te same filtry co przed otwarciem ticketu').toHaveURL(
+        /\/tickets\?(?=.*priority=URGENT)(?=.*status=all)/,
+      )
+      await expect(tickets.row(subject), 'Ticket jest widoczny na liście').toBeVisible()
     })
   })
 })

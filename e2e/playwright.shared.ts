@@ -11,6 +11,11 @@ try {
   // No .env: tests that need a secret skip themselves.
 }
 
+const headless = process.env.E2E_HEADLESS ?? 'true'
+if (headless !== 'true' && headless !== 'false') {
+  throw new Error('E2E_HEADLESS must be "true" or "false"')
+}
+
 // Settings shared by the UI config (playwright.config.ts) and the API config
 // (playwright.api.config.ts). Each config writes its results to its own folders.
 export function sharedConfig(suffix = ''): PlaywrightTestConfig {
@@ -21,15 +26,19 @@ export function sharedConfig(suffix = ''): PlaywrightTestConfig {
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
     reporter: [
-      ['list'],
+      // Live START/END log of tests and steps (masked). See e2e/reporters/step-log.ts.
+      // Keep it first: it adds the step-log.log attachment that html and junit then include.
+      ['./reporters/step-log.ts'],
       ['html', { outputFolder: `playwright-report${suffix}`, open: 'never' }],
       ['junit', { outputFile: `test-results${suffix}/junit.xml` }],
     ],
     use: {
       baseURL: BASE_URL,
+      headless: headless === 'true',
       locale: 'pl-PL',
-      trace: 'retain-on-failure',
-      screenshot: 'only-on-failure',
+      // Every attempt, passed ones too. Traces are not masked: they hold the test data.
+      trace: 'on',
+      screenshot: 'on',
       video: 'retain-on-failure',
       launchOptions: { slowMo: Number(process.env.E2E_SLOWMO ?? 0) },
     },

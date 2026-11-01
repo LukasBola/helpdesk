@@ -30,13 +30,13 @@ test.beforeAll(async () => {
 
 async function list(params: Record<string, string | number>): Promise<ListDto> {
   const res = await agent.get('/api/tickets', { params })
-  expect(res.status(), JSON.stringify(params)).toBe(200)
+  expect(res.status(), `Status GET /api/tickets z parametrami ${JSON.stringify(params)}`).toBe(200)
   return (await res.json()) as ListDto
 }
 
 async function detail(id: string) {
   const res = await agent.get(`/api/tickets/${id}`)
-  expect(res.status()).toBe(200)
+  expect(res.status(), `Status GET /api/tickets/${id}`).toBe(200)
   return (await res.json()) as TicketDto & {
     history: HistoryDto[]
     replies: unknown[]
@@ -52,12 +52,16 @@ test.describe('API /api/tickets: autoryzacja', () => {
   test('T1 bez sesji: lista, szczegóły i PATCH zwracają 401', async () => {
     const anon = await newApiContext()
     const id = await findTicketId(agent, TICKETS.openLow.subject)
-    expect((await anon.get('/api/tickets')).status()).toBe(401)
-    expect((await anon.get(`/api/tickets/${id}`)).status()).toBe(401)
-    expect((await anon.patch(`/api/tickets/${id}`, { data: { status: 'CLOSED' } })).status()).toBe(
-      401,
-    )
-    expect((await detail(id)).status).toBe('OPEN')
+    expect((await anon.get('/api/tickets')).status(), 'Status GET /api/tickets bez sesji').toBe(401)
+    expect(
+      (await anon.get(`/api/tickets/${id}`)).status(),
+      'Status GET /api/tickets/:id bez sesji',
+    ).toBe(401)
+    expect(
+      (await anon.patch(`/api/tickets/${id}`, { data: { status: 'CLOSED' } })).status(),
+      'Status PATCH /api/tickets/:id bez sesji',
+    ).toBe(401)
+    expect((await detail(id)).status, 'Status ticketu po odrzuconym PATCH (bez zmian)').toBe('OPEN')
   })
 
   test('T1 sfałszowane ciasteczko sesji: 401', async () => {
@@ -65,7 +69,7 @@ test.describe('API /api/tickets: autoryzacja', () => {
     const res = await anon.get('/api/tickets', {
       headers: { Cookie: 'better-auth.session_token=forged.value' },
     })
-    expect(res.status()).toBe(401)
+    expect(res.status(), 'Status GET /api/tickets ze sfałszowanym ciasteczkiem').toBe(401)
   })
 
   test('T13 PATCH z obcego originu (CSRF) jest odrzucony, ticket bez zmian', async () => {
@@ -74,44 +78,61 @@ test.describe('API /api/tickets: autoryzacja', () => {
       headers: { Origin: 'http://evil.example' },
       data: { status: 'CLOSED' },
     })
-    expect(res.status()).toBe(403)
-    expect((await detail(id)).status).toBe('OPEN')
+    expect(res.status(), 'Status PATCH z obcego originu').toBe(403)
+    expect((await detail(id)).status, 'Status ticketu po odrzuconym PATCH (bez zmian)').toBe('OPEN')
   })
 })
 
 test.describe('API /api/tickets: lista', () => {
   test('T2 domyślny kształt odpowiedzi i komplet fixture’ów', async () => {
     const all = await list({})
-    expect(all).toMatchObject({ page: 1, limit: 25 })
+    expect(all, 'Domyślne page i limit listy').toMatchObject({ page: 1, limit: 25 })
 
     const fixtures = await list({ search: E2E_SEARCH, limit: 100 })
-    expect(fixtures.total).toBe(FIXTURE_COUNT)
-    expect(fixtures.tickets.map(t => t.subject).sort()).toEqual(
+    expect(fixtures.total, 'Liczba ticketów fixture (total)').toBe(FIXTURE_COUNT)
+    expect(fixtures.tickets.map(t => t.subject).sort(), 'Tematy ticketów fixture').toEqual(
       Object.values(TICKETS)
         .map(t => t.subject)
         .sort(),
     )
-    expect(all.total).toBeGreaterThanOrEqual(fixtures.total)
+    expect(all.total, 'Total wszystkich ticketów >= liczba fixture').toBeGreaterThanOrEqual(
+      fixtures.total,
+    )
   })
 
   test('T3 filtr status zwraca tylko pasujące tickety', async () => {
     const body = await list({ status: 'RESOLVED', search: E2E_SEARCH })
-    expect(body.tickets.map(t => t.subject)).toEqual([TICKETS.resolved.subject])
-    expect(body.total).toBe(1)
+    expect(
+      body.tickets.map(t => t.subject),
+      'Tematy ticketów RESOLVED',
+    ).toEqual([TICKETS.resolved.subject])
+    expect(body.total, 'Liczba ticketów RESOLVED (total)').toBe(1)
   })
 
   test('T3 filtr priorytetu', async () => {
     const body = await list({ priority: 'URGENT', search: E2E_SEARCH })
-    expect(body.tickets.map(t => t.subject)).toEqual([TICKETS.openUrgent.subject])
+    expect(
+      body.tickets.map(t => t.subject),
+      'Tematy ticketów URGENT',
+    ).toEqual([TICKETS.openUrgent.subject])
   })
 
   test('T3 wyszukiwanie ignoruje wielkość liter i obejmuje e-mail i nazwę klienta', async () => {
     const bySubject = await list({ search: 'e2e drukarka' })
-    expect(bySubject.tickets.map(t => t.subject)).toContain(TICKETS.openUrgent.subject)
+    expect(
+      bySubject.tickets.map(t => t.subject),
+      'Wyniki szukania „e2e drukarka” (temat, inna wielkość liter)',
+    ).toContain(TICKETS.openUrgent.subject)
     const byEmail = await list({ search: 'OPEN-LOW@KLIENT.EXAMPLE' })
-    expect(byEmail.tickets.map(t => t.subject)).toEqual([TICKETS.openLow.subject])
+    expect(
+      byEmail.tickets.map(t => t.subject),
+      'Wyniki szukania po e-mailu klienta (wielkie litery)',
+    ).toEqual([TICKETS.openLow.subject])
     const byName = await list({ search: 'klient resolved' })
-    expect(byName.tickets.map(t => t.subject)).toEqual([TICKETS.resolved.subject])
+    expect(
+      byName.tickets.map(t => t.subject),
+      'Wyniki szukania po nazwie klienta',
+    ).toEqual([TICKETS.resolved.subject])
   })
 
   for (const orderBy of ['createdAt', 'priority'] as const) {
@@ -119,35 +140,44 @@ test.describe('API /api/tickets: lista', () => {
       const whole = await list({ search: E2E_SEARCH, orderBy, limit: 6 })
       const pages = [1, 2, 3].map(page => list({ search: E2E_SEARCH, orderBy, limit: 2, page }))
       const paged = (await Promise.all(pages)).flatMap(p => p.tickets.map(t => t.id))
-      expect(paged).toEqual(whole.tickets.map(t => t.id))
+      expect(paged, `Id ticketów ze stron 1–3 = jedna strona (orderBy=${orderBy})`).toEqual(
+        whole.tickets.map(t => t.id),
+      )
     })
   }
 
   test('T3 strona za ostatnią: pusta lista i poprawny total', async () => {
     const body = await list({ search: E2E_SEARCH, limit: 5, page: 10 })
-    expect(body).toMatchObject({ tickets: [], total: FIXTURE_COUNT, page: 10 })
+    expect(body, 'Strona 10: pusta lista, poprawny total i numer strony').toMatchObject({
+      tickets: [],
+      total: FIXTURE_COUNT,
+      page: 10,
+    })
   })
 
   test('T3 bardzo duży numer strony nie powoduje błędu serwera', async () => {
     const body = await list({ search: E2E_SEARCH, page: '100000000000' })
-    expect(body.tickets).toEqual([])
+    expect(body.tickets, 'Tickety dla bardzo dużego numeru strony').toEqual([])
   })
 
   test('T3 wyszukiwanie bez wyników zwraca pustą listę', async () => {
     const body = await list({ search: 'zzz-nie-ma-takiego-ticketu' })
-    expect(body).toMatchObject({ tickets: [], total: 0 })
+    expect(body, 'Wynik szukania bez trafień').toMatchObject({ tickets: [], total: 0 })
   })
 
   for (const ch of ['%', '_', '\\']) {
     test(`T14 znak ${ch} w wyszukiwaniu jest dosłowny, nie wildcard`, async () => {
       const body = await list({ search: `${ch}${E2E_SEARCH}` })
-      expect(body.total).toBe(0)
+      expect(body.total, `Liczba wyników dla znaku ${ch} przed frazą (total)`).toBe(0)
     })
   }
 
   test('T14 polskie znaki w wyszukiwaniu', async () => {
     const body = await list({ search: 'fakturę' })
-    expect(body.tickets.map(t => t.subject)).toContain(TICKETS.openLow.subject)
+    expect(
+      body.tickets.map(t => t.subject),
+      'Wyniki szukania „fakturę”',
+    ).toContain(TICKETS.openLow.subject)
   })
 
   const invalidParams: Record<string, string | number>[] = [
@@ -165,8 +195,11 @@ test.describe('API /api/tickets: lista', () => {
   for (const params of invalidParams) {
     test(`T4 niepoprawny parametr ${JSON.stringify(params)}: 422`, async () => {
       const res = await agent.get('/api/tickets', { params })
-      expect(res.status()).toBe(422)
-      expect(await res.json()).toHaveProperty('error')
+      expect(res.status(), `Status listy z parametrem ${JSON.stringify(params)}`).toBe(422)
+      expect(
+        await res.json(),
+        `Treść błędu dla parametru ${JSON.stringify(params)}`,
+      ).toHaveProperty('error')
     })
   }
 })
@@ -175,7 +208,10 @@ test.describe('API /api/tickets/:id', () => {
   test('T5 szczegóły ticketu bez zmian: puste historia i odpowiedzi', async () => {
     const id = await findTicketId(agent, TICKETS.openLow.subject)
     const body = await detail(id)
-    expect(body).toMatchObject({
+    expect(
+      body,
+      'Szczegóły ticketu openLow: dane, brak przypisania, pusta historia i odpowiedzi',
+    ).toMatchObject({
       id,
       subject: TICKETS.openLow.subject,
       status: 'OPEN',
@@ -189,8 +225,10 @@ test.describe('API /api/tickets/:id', () => {
   test('T5 nieistniejący ticket: 404 JSON', async () => {
     for (const id of [UNKNOWN_CUID, 'nie-ma']) {
       const res = await agent.get(`/api/tickets/${id}`)
-      expect(res.status()).toBe(404)
-      expect(await res.json()).toEqual({ error: 'Not found' })
+      expect(res.status(), `Status GET /api/tickets/${id}`).toBe(404)
+      expect(await res.json(), `Treść odpowiedzi GET /api/tickets/${id}`).toEqual({
+        error: 'Not found',
+      })
     }
   })
 })
@@ -203,12 +241,18 @@ test.describe('API PATCH /api/tickets/:id: zmiany i historia', () => {
     const priority = before.priority === 'HIGH' ? 'LOW' : 'HIGH'
 
     const res = await agent.patch(`/api/tickets/${id}`, { data: { status, priority } })
-    expect(res.status()).toBe(200)
-    expect(await res.json()).toMatchObject({ status, priority })
+    expect(res.status(), 'Status PATCH status + priority').toBe(200)
+    expect(await res.json(), 'Odpowiedź PATCH zawiera nowy status i priorytet').toMatchObject({
+      status,
+      priority,
+    })
 
     const after = await detail(id)
     const added = after.history.slice(before.history.length)
-    expect(added).toEqual(
+    expect(
+      added,
+      'Nowe wpisy historii: status (z autorem) i priorytet ze starą/nową wartością',
+    ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           field: 'status',
@@ -223,22 +267,28 @@ test.describe('API PATCH /api/tickets/:id: zmiany i historia', () => {
         }),
       ]),
     )
-    expect(added).toHaveLength(2)
+    expect(added, 'Liczba nowych wpisów historii').toHaveLength(2)
   })
 
   test('T6 ponowne ustawienie tej samej wartości nie dodaje wpisu historii', async () => {
     const id = await findTicketId(agent, TICKETS.patchStatus.subject)
     const before = await detail(id)
     const res = await agent.patch(`/api/tickets/${id}`, { data: { status: before.status } })
-    expect(res.status()).toBe(200)
-    expect((await detail(id)).history).toHaveLength(before.history.length)
+    expect(res.status(), 'Status PATCH z tą samą wartością statusu').toBe(200)
+    expect(
+      (await detail(id)).history,
+      'Liczba wpisów historii po PATCH z tą samą wartością',
+    ).toHaveLength(before.history.length)
   })
 
   test('T6 pusty PATCH niczego nie zmienia', async () => {
     const id = await findTicketId(agent, TICKETS.openUrgent.subject)
     const res = await agent.patch(`/api/tickets/${id}`, { data: {} })
-    expect(res.status()).toBe(200)
-    expect(await detail(id)).toMatchObject({ status: 'OPEN', priority: 'URGENT', history: [] })
+    expect(res.status(), 'Status pustego PATCH').toBe(200)
+    expect(
+      await detail(id),
+      'Ticket po pustym PATCH: status, priorytet i historia bez zmian',
+    ).toMatchObject({ status: 'OPEN', priority: 'URGENT', history: [] })
   })
 
   test('T11 przypisanie i odpięcie: historia, assignee i filtr assigneeId', async () => {
@@ -246,29 +296,34 @@ test.describe('API PATCH /api/tickets/:id: zmiany i historia', () => {
     const me = await userId(agent)
 
     const assigned = await agent.patch(`/api/tickets/${id}`, { data: { assigneeId: me } })
-    expect(assigned.status()).toBe(200)
+    expect(assigned.status(), 'Status PATCH przypisania').toBe(200)
     const afterAssign = await detail(id)
-    expect(afterAssign.assignee).toMatchObject({ id: me, name: USERS.agent.name })
-    expect(afterAssign.history.at(-1)).toMatchObject({
+    expect(afterAssign.assignee, 'Przypisany agent w szczegółach ticketu').toMatchObject({
+      id: me,
+      name: USERS.agent.name,
+    })
+    expect(afterAssign.history.at(-1), 'Ostatni wpis historii po przypisaniu').toMatchObject({
       field: 'assigneeId',
       oldValue: null,
       newValue: me,
     })
-    expect((await list({ assigneeId: me, search: E2E_SEARCH })).tickets.map(t => t.id)).toContain(
-      id,
-    )
+    expect(
+      (await list({ assigneeId: me, search: E2E_SEARCH })).tickets.map(t => t.id),
+      'Filtr assigneeId zawiera przypisany ticket',
+    ).toContain(id)
 
     const unassigned = await agent.patch(`/api/tickets/${id}`, { data: { assigneeId: null } })
-    expect(unassigned.status()).toBe(200)
+    expect(unassigned.status(), 'Status PATCH odpięcia').toBe(200)
     const afterUnassign = await detail(id)
-    expect(afterUnassign.assignee).toBeNull()
-    expect(afterUnassign.history.at(-1)).toMatchObject({
+    expect(afterUnassign.assignee, 'Ticket nie ma przypisanego agenta po odpięciu').toBeNull()
+    expect(afterUnassign.history.at(-1), 'Ostatni wpis historii po odpięciu').toMatchObject({
       field: 'assigneeId',
       oldValue: me,
       newValue: null,
     })
     expect(
       (await list({ assigneeId: me, search: E2E_SEARCH })).tickets.map(t => t.id),
+      'Filtr assigneeId nie zawiera odpiętego ticketu',
     ).not.toContain(id)
   })
 })
@@ -285,17 +340,25 @@ test.describe('API PATCH /api/tickets/:id: błędne dane', () => {
     test(`T7 niepoprawne dane ${JSON.stringify(data)}: 422, ticket bez zmian`, async () => {
       const id = await findTicketId(agent, TICKETS.patchInvalid.subject)
       const res = await agent.patch(`/api/tickets/${id}`, { data })
-      expect(res.status()).toBe(422)
-      expect(await detail(id)).toMatchObject({ status: 'OPEN', priority: 'MEDIUM', history: [] })
+      expect(res.status(), `Status PATCH z danymi ${JSON.stringify(data)}`).toBe(422)
+      expect(
+        await detail(id),
+        'Ticket po odrzuconym PATCH: status, priorytet i historia bez zmian',
+      ).toMatchObject({ status: 'OPEN', priority: 'MEDIUM', history: [] })
     })
   }
 
   test('T8 przypisanie do nieistniejącego użytkownika: 422 i brak zmian', async () => {
     const id = await findTicketId(agent, TICKETS.patchInvalid.subject)
     const res = await agent.patch(`/api/tickets/${id}`, { data: { assigneeId: UNKNOWN_CUID } })
-    expect(res.status()).toBe(422)
-    expect(await res.json()).toEqual({ error: 'Unknown assignee' })
-    expect(await detail(id)).toMatchObject({ assignee: null, history: [] })
+    expect(res.status(), 'Status PATCH z nieistniejącym assigneeId').toBe(422)
+    expect(await res.json(), 'Treść błędu dla nieistniejącego assigneeId').toEqual({
+      error: 'Unknown assignee',
+    })
+    expect(
+      await detail(id),
+      'Ticket po odrzuconym PATCH: brak przypisania i historii',
+    ).toMatchObject({ assignee: null, history: [] })
   })
 
   test('T8 przypisanie do zablokowanego użytkownika: 422', async () => {
@@ -303,8 +366,10 @@ test.describe('API PATCH /api/tickets/:id: błędne dane', () => {
     // The locked user can't sign in to learn their own id, so read it from the database.
     const lockedId = db.userId(USERS.locked.email)
     const res = await agent.patch(`/api/tickets/${id}`, { data: { assigneeId: lockedId } })
-    expect(res.status()).toBe(422)
-    expect(await res.json()).toEqual({ error: 'Assignee is blocked' })
+    expect(res.status(), 'Status PATCH z zablokowanym assigneeId').toBe(422)
+    expect(await res.json(), 'Treść błędu dla zablokowanego assigneeId').toEqual({
+      error: 'Assignee is blocked',
+    })
   })
 
   test('T9 uszkodzony JSON w body: 400 JSON', async () => {
@@ -313,8 +378,10 @@ test.describe('API PATCH /api/tickets/:id: błędne dane', () => {
       headers: { 'Content-Type': 'application/json' },
       data: '{"status": "OPEN",',
     })
-    expect(res.status()).toBe(400)
-    expect(await res.json()).toEqual({ error: 'Invalid JSON body' })
+    expect(res.status(), 'Status PATCH z uszkodzonym JSON').toBe(400)
+    expect(await res.json(), 'Treść błędu dla uszkodzonego JSON').toEqual({
+      error: 'Invalid JSON body',
+    })
   })
 
   test('T9 zbyt duże body (150 kB): 413 JSON', async () => {
@@ -322,13 +389,15 @@ test.describe('API PATCH /api/tickets/:id: błędne dane', () => {
     const res = await agent.patch(`/api/tickets/${id}`, {
       data: { status: 'OPEN', padding: 'x'.repeat(150 * 1024) },
     })
-    expect(res.status()).toBe(413)
-    expect(await res.json()).toEqual({ error: 'Request body too large' })
+    expect(res.status(), 'Status PATCH z body 150 kB').toBe(413)
+    expect(await res.json(), 'Treść błędu dla zbyt dużego body').toEqual({
+      error: 'Request body too large',
+    })
   })
 
   test('T10 PATCH nieistniejącego ticketu: 404', async () => {
     const res = await agent.patch(`/api/tickets/${UNKNOWN_CUID}`, { data: { status: 'CLOSED' } })
-    expect(res.status()).toBe(404)
+    expect(res.status(), 'Status PATCH nieistniejącego ticketu').toBe(404)
   })
 
   test('T6 nieznane pola w body nie zmieniają ticketu', async () => {
@@ -336,8 +405,11 @@ test.describe('API PATCH /api/tickets/:id: błędne dane', () => {
     const res = await agent.patch(`/api/tickets/${id}`, {
       data: { subject: 'Zmieniony temat', customerEmail: 'hacker@example.com', id: 'x' },
     })
-    expect(res.status()).toBe(200)
-    expect(await detail(id)).toMatchObject({
+    expect(res.status(), 'Status PATCH z nieznanymi polami').toBe(200)
+    expect(
+      await detail(id),
+      'Ticket po PATCH z nieznanymi polami: id, temat i e-mail klienta bez zmian',
+    ).toMatchObject({
       id,
       subject: TICKETS.patchInvalid.subject,
       customerEmail: 'patch-invalid@klient.example',
@@ -351,10 +423,19 @@ test.describe('API: zablokowany użytkownik z aktywną sesją', () => {
 
   test('T12 po zablokowaniu dostaje 401 z API ticketów', async () => {
     const ctx = await signInAs('blockedApi')
-    expect((await ctx.get('/api/tickets')).status()).toBe(200)
+    expect(
+      (await ctx.get('/api/tickets')).status(),
+      'Status GET /api/tickets przed zablokowaniem',
+    ).toBe(200)
     db.block(USERS.blockedApi.email)
-    expect((await ctx.get('/api/tickets')).status()).toBe(401)
-    expect((await ctx.patch('/api/tickets/any', { data: {} })).status()).toBe(401)
+    expect(
+      (await ctx.get('/api/tickets')).status(),
+      'Status GET /api/tickets po zablokowaniu',
+    ).toBe(401)
+    expect(
+      (await ctx.patch('/api/tickets/any', { data: {} })).status(),
+      'Status PATCH po zablokowaniu',
+    ).toBe(401)
   })
 })
 
@@ -362,30 +443,31 @@ test.describe('API: odpowiedzi i filtr przypisania', () => {
   test('T14 POST /replies dodaje odpowiedź (201) i przestawia status na IN_PROGRESS', async () => {
     const id = await findTicketId(agent, TICKETS.apiReply.subject)
     const res = await agent.post(`/api/tickets/${id}/replies`, { data: { body: 'Odpowiedź API' } })
-    expect(res.status()).toBe(201)
+    expect(res.status(), 'Status POST /replies').toBe(201)
     const ticket = await detail(id)
-    expect(ticket.status).toBe('IN_PROGRESS')
+    expect(ticket.status, 'Status ticketu po odpowiedzi').toBe('IN_PROGRESS')
     // A retry may find the reply from the first attempt, so only check that it exists.
-    expect(ticket.replies.length).toBeGreaterThanOrEqual(1)
+    expect(ticket.replies.length, 'Liczba odpowiedzi w tickecie').toBeGreaterThanOrEqual(1)
   })
 
   test('T14 pusta odpowiedź: 422', async () => {
     const id = await findTicketId(agent, TICKETS.apiReply.subject)
     const res = await agent.post(`/api/tickets/${id}/replies`, { data: { body: '   ' } })
-    expect(res.status()).toBe(422)
+    expect(res.status(), 'Status POST /replies z pustą treścią').toBe(422)
   })
 
   test('T14 bez sesji POST /replies zwraca 401', async () => {
     const anon = await newApiContext()
     const id = await findTicketId(agent, TICKETS.apiReply.subject)
-    expect((await anon.post(`/api/tickets/${id}/replies`, { data: { body: 'x' } })).status()).toBe(
-      401,
-    )
+    expect(
+      (await anon.post(`/api/tickets/${id}/replies`, { data: { body: 'x' } })).status(),
+      'Status POST /replies bez sesji',
+    ).toBe(401)
   })
 
   test('T15 assigneeId=none zwraca tylko nieprzypisane', async () => {
     const { tickets, total } = await list({ assigneeId: 'none', search: E2E_SEARCH, limit: 50 })
-    expect(total).toBeGreaterThan(0)
-    for (const t of tickets) expect(t.assigneeId).toBeNull()
+    expect(total, 'Liczba nieprzypisanych ticketów').toBeGreaterThan(0)
+    for (const t of tickets) expect(t.assigneeId, `Ticket ${t.id} jest nieprzypisany`).toBeNull()
   })
 })

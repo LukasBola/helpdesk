@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
+import { step } from './step'
+
 // The ticket inbox: list, filters and the ticket panel next to it.
 export class TicketsPage {
   readonly searchInput: Locator
@@ -12,11 +14,13 @@ export class TicketsPage {
     this.backToList = page.getByRole('link', { name: 'Wróć do listy' })
   }
 
+  @step
   async goto(query = '') {
     await this.page.goto(`/tickets${query ? `?${query}` : ''}`)
-    await expect(this.searchInput).toBeVisible()
+    await expect(this.searchInput, 'Pole wyszukiwania ticketów jest widoczne').toBeVisible()
   }
 
+  @step
   async search(text: string) {
     await this.searchInput.fill(text)
   }
@@ -25,9 +29,10 @@ export class TicketsPage {
     return this.page.getByRole('link', { name: subject })
   }
 
+  @step
   async open(subject: string) {
     await this.row(subject).click()
-    await expect(this.panel(subject)).toBeVisible()
+    await expect(this.panel(subject), `Panel ticketu „${subject}” jest widoczny`).toBeVisible()
   }
 
   panel(subject: string): Locator {
@@ -55,6 +60,7 @@ export class TicketsPage {
     return this.panel(subject).getByRole('textbox', { name: 'Odpowiedź' })
   }
 
+  @step
   async reply(subject: string, text: string) {
     await this.replyBox(subject).fill(text)
     await this.panel(subject).getByRole('button', { name: 'Wyślij' }).click()

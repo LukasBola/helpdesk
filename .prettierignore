@@ -6,7 +6,9 @@ coverage
 
 # Playwright output
 playwright-report
+e2e/playwright-report-api
 test-results
+e2e/test-results-api
 
 # Prisma — auto-generated migrations and client
 prisma/migrations/

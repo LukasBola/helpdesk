@@ -34,8 +34,10 @@ test.describe('Logowanie', () => {
     await loginPage.login(USERS.agent.email, USERS.agent.password)
 
     const shell = new AppShell(page)
-    await expect(page).toHaveURL(/\/knowledge-base$/)
-    await expect(shell.heading('Baza wiedzy')).toBeVisible()
+    await expect(page, 'Po zalogowaniu adres wraca do /knowledge-base').toHaveURL(
+      /\/knowledge-base$/,
+    )
+    await expect(shell.heading('Baza wiedzy'), 'Widoczny jest nagłówek „Baza wiedzy”').toBeVisible()
     await shell.expectSignedInAs(USERS.agent.firstName)
   })
 
