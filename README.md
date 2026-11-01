@@ -279,7 +279,7 @@ Each line has fixed-width columns: timestamp (ISO 8601, UTC), level (`INFO`, `WA
 - **Outcome:** `PASS`, `FAIL`, `TIMEOUT`, `INTERRUPTED`, `SKIPPED`, or `INCOMPLETE` for a step that never ended (timeout, killed worker); an unfinished step is never shown as `PASS`.
 - **Summary:** the last line counts `passed`, `failed`, `flaky`, `skipped`, `expected to fail` (`test.fail()`) and `not run` (e.g. after `--max-failures`) tests.
 - **Failures:** at the end of the run every failed test is listed with the first step that failed, innermost in its branch (id, kind, text, location), its step path, the trace command and the full Playwright error (expected/received, call log).
-- **HTML report:** every attempt has its own log as the `step-log.log` attachment, next to its trace. The trace itself shows the same steps in its Actions panel.
+- **HTML report:** every attempt has its own log as the `step-log.log` attachment (steps and the masked `console.log` output of that attempt), next to its trace. The trace itself shows the same steps in its Actions panel.
 
 To make the log readable:
 
@@ -289,7 +289,7 @@ To make the log readable:
 
 `E2E_LOG=tests pnpm e2e` prints only test `START`/`END` lines (the attachment is always complete). The reporter masks known secrets in the terminal and in `step-log.log` (`e2e/reporters/mask.ts`): e2e passwords (including `E2E_PASSWORD` from `.env`), full names of e2e users, `POSTMARK_WEBHOOK_TOKEN`, e-mail addresses, `Bearer`/`Basic` credentials and token/cookie/password values. Values typed by actions stay visible for debugging (`Fill "to-nie-jest-email"`, `Fill ""`); only the known secrets above are replaced (`Fill "[REDACTED]"`). Test output (`console.log`) is masked line by line, so a secret split across two writes is still caught. It is a safety net, not a guarantee (a value typed by a test that is not on the list, a first name alone or a free-text secret is printed as is), so e2e tests must use fictional data only. Playwright's own HTML step tree and traces (which also capture stdout) are not masked. Reporter checks: `pnpm e2e:reporter:test` (no app or database needed; also runs in CI as the `e2e-reporter` job). Design: [ADR-0016](docs/adr/0016-logowanie-e2e-reporter-playwright.md).
 
-Traces are kept for every failed test locally (`retain-on-failure`) and recorded on the first retry in CI (`on-first-retry`, as recommended by Playwright). Open them from the HTML report with `pnpm e2e:report`, or run `pnpm exec playwright show-trace <path-to-trace.zip>`. Traces may contain sensitive test data and are overwritten by subsequent runs.
+A trace and a screenshot are recorded for every attempt, passed ones included, locally and in CI (`trace: 'on'`, `screenshot: 'on'` in `e2e/playwright.shared.ts`). Open them from the HTML report with `pnpm e2e:report`, or run `pnpm exec playwright show-trace <path-to-trace.zip>`. Traces are not masked, so they hold the test data of every run (not only failed ones); they are overwritten by subsequent runs.
 
 ## Code Quality
 

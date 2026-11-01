@@ -48,7 +48,7 @@ Ostatnia linia przebiegu liczy testy: `passed`, `failed`, `flaky`, `skipped`, `e
 
 ## Raport HTML i trace
 
-Każda próba ma załącznik `step-log.log` z własnym logiem, obok trace'a. Trace Viewer pokazuje te same kroki natywnie (panel Actions); dołączenie logu wewnątrz trace'a wymagałoby kodu w workerze, czyli instrumentacji testów, więc nie jest celem. Trace: `on-first-retry` w CI (zalecenie Playwright), `retain-on-failure` lokalnie (brak retry).
+Każda próba ma załącznik `step-log.log` z własnym logiem (kroki i zamaskowane wyjście `console.log`), obok trace'a. Trace Viewer pokazuje te same kroki natywnie (panel Actions); dołączenie logu wewnątrz trace'a wymagałoby kodu w workerze, czyli instrumentacji testów, więc nie jest celem. Trace i zrzut ekranu są zapisywane dla każdej próby, także udanej (`trace: 'on'`, `screenshot: 'on'` w `e2e/playwright.shared.ts`). Trace nie jest maskowany, więc po każdym przebiegu zostają artefakty z danymi testowymi.
 
 ## Dane wrażliwe
 

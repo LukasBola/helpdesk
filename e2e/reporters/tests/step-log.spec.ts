@@ -153,7 +153,7 @@ test.describe('step-log reporter on intentionally failing cases', () => {
   test('each retry is a separate attempt with its own outcome', () => {
     expect(output).toMatch(/START .*flaky passes on retry \(worker \d+, retry 0\)/)
     expect(output).toMatch(/START .*flaky passes on retry \(worker \d+, retry 1\)/)
-    expect(output).toMatch(/3 passed, 3 failed, 1 flaky, 0 skipped, 1 expected to fail, 0 not run/)
+    expect(output).toMatch(/3 passed, 4 failed, 1 flaky, 0 skipped, 1 expected to fail, 0 not run/)
     expect(output).not.toMatch(/^\d+\) .*flaky passes on retry/m)
   })
 
@@ -194,6 +194,16 @@ test.describe('step-log reporter on intentionally failing cases', () => {
     expect(run, 'Podsumowanie z liczbą nieuruchomionych').toMatch(/, [1-9]\d* not run$/m)
   })
 
+  test('a secret split right after an over-long line is still masked', () => {
+    expect(output, 'Druga połowa hasła po linii ponad 64 KiB').not.toContain('word-123')
+  })
+
+  test('an unexpected pass of test.fail() is explained in the failure summary', () => {
+    expect(output, 'Wyjaśnienie zamiast pustej sekcji Error').toContain(
+      'Expected status "failed", but the test ended with "passed".',
+    )
+  })
+
   test('a timed out step is never reported as PASS and is named as the failed step', () => {
     const lines = log('timeout is not a pass')
     expect(lines).not.toMatch(/PASS .*Never ends/)
@@ -227,5 +237,14 @@ test.describe('step-log reporter on intentionally failing cases', () => {
     expect(logs[0], 'Log pierwszej próby nie zawiera drugiej').not.toMatch(/retry 1\)/)
     expect(logs[1], 'Log drugiej próby').toMatch(/✓ END {3}PASS .* TEST .*retry 1\)/)
     expect(logs.join(''), 'Załącznik bez kodów ANSI').not.toMatch(ANSI)
+
+    const secrets = specs(report).find(spec => spec.title === 'secrets are masked')
+    const secretsLog = Buffer.from(
+      secrets?.tests[0].results[0].attachments.find(a => a.name === 'step-log.log')?.body ?? '',
+      'base64',
+    ).toString()
+    expect(secretsLog, 'Załącznik zawiera zamaskowane wyjście konsoli').toMatch(
+      /^T\d{3} token=\[REDACTED\]/m,
+    )
   })
 })

@@ -68,6 +68,13 @@ export default tseslint.config(
             "CallExpression[callee.object.name='expect'][callee.property.name=/^(soft|poll)$/][arguments.length<2]",
           message: "Describe the assertion: expect.soft(value, 'what is checked')",
         },
+        {
+          // The options overload, e.g. expect.poll(fn, { timeout }), needs a message too.
+          selector:
+            "CallExpression:matches([callee.name='expect'], [callee.object.name='expect'][callee.property.name=/^(soft|poll)$/]) > ObjectExpression.arguments:nth-child(2):not(:has(> Property[key.name='message']))",
+          message:
+            "Describe the assertion: expect.poll(fn, { message: 'what is checked', timeout })",
+        },
       ],
     },
   },

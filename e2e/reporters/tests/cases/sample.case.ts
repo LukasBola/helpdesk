@@ -29,6 +29,9 @@ test('secrets are masked', async ({ page }) => {
   // a known e2e password does not.
   process.stdout.write('Authorization: Bearer split')
   process.stdout.write('Token987\n')
+  // A line over the 64 KiB buffer limit, with a known password split right after it.
+  process.stdout.write(`${'x'.repeat(70 * 1024)} e2e-pass`)
+  process.stdout.write('word-123\n')
   await page.setContent('<input aria-label="E-mail"><input aria-label="Hasło">')
   await page.getByLabel('E-mail').fill('to-nie-jest-email')
   await page.getByLabel('Hasło').fill('e2e-password-123')
@@ -51,6 +54,11 @@ test('skipped and multi-line steps', async () => {
 test('failing as expected with test.fail()', async () => {
   test.fail()
   expect(1, 'fails on purpose').toBe(2)
+})
+
+test('marked test.fail() but passes', async () => {
+  test.fail()
+  expect(1, 'passes unexpectedly').toBe(1)
 })
 
 test('timeout is not a pass', async () => {

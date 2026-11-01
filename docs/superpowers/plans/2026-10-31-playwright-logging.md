@@ -20,7 +20,7 @@ Plan zastępuje pierwszą wersję (wrappery logujące w testach, kontrola pokryc
 - [x] **4. Global setup:** linie `GLOBAL` w tym samym formacie (`e2e/global-setup.ts`).
 - [x] **5. Opisy asercji:** opis we wszystkich `expect` w `e2e/{tests,api,pages,fixtures}`; reguła `no-restricted-syntax` w `eslint.config.js`.
 - [x] **6. Testy reportera** `e2e/reporters/tests/` (osobny proces z celowo padającymi przypadkami): format i kolumny, pary START/END, soft/not/auto-wait, maskowanie, retry i flaky, timeout, podsumowanie błędów, załącznik dla każdej próby. Skrypt `pnpm e2e:reporter:test`, job `e2e-reporter` w `.github/workflows/ci.yml`.
-- [x] **7. Trace:** `on-first-retry` w CI, `retain-on-failure` lokalnie.
+- [x] **7. Trace i zrzuty ekranu:** `trace: 'on'`, `screenshot: 'on'` dla każdej próby, lokalnie i w CI (`e2e/playwright.shared.ts`).
 - [x] **8. Dokumentacja:** README (sekcja „Test log”), spec, ADR-0016.
 
 ## Weryfikacja (2026-11-01)

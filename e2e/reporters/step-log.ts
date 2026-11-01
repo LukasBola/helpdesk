@@ -46,8 +46,10 @@ const OUTCOME: Record<TestResult['status'], Outcome> = {
   skipped: 'SKIPPED',
   interrupted: 'INTERRUPTED',
 }
-// A console.log longer than this without a newline is printed in parts.
+// A console.log longer than this without a newline is printed in parts. The last OVERLAP
+// characters stay buffered, so a secret written across the cut is still masked as a whole.
 const MAX_PENDING = 64 * 1024
+const OVERLAP = 1024
 
 interface FailedStep {
   id: string
@@ -224,7 +226,9 @@ export default class StepLogReporter implements Reporter {
     const trace = result.attachments.find(attachment => attachment.name === 'trace')?.path
     const step = attempt.failedStep
     const message = mask(
-      result.errors.map(error => plain(error.message ?? error.value ?? '')).join('\n\n'),
+      result.errors.map(error => plain(error.message ?? error.value ?? '')).join('\n\n') ||
+        // No error: the status itself is unexpected, e.g. a test.fail() test that passed.
+        `Expected status "${test.expectedStatus}", but the test ended with "${result.status}".`,
     )
     const lines = [
       `\n${paint('bold', `${index}) ${attemptId(attempt.number)} ${mask(this.testLabel(test, result))}`)}`,
@@ -341,11 +345,16 @@ export default class StepLogReporter implements Reporter {
     this.pending.set(key, buffer)
     // The decoder keeps a UTF-8 character split between two Buffer chunks.
     buffer.text += typeof chunk === 'string' ? chunk : buffer.decoder.write(chunk)
-    const end =
-      buffer.text.length > MAX_PENDING ? buffer.text.length : buffer.text.lastIndexOf('\n') + 1
-    if (!end) return
-    this.emit(stream, attempt, buffer.text.slice(0, end))
-    buffer.text = buffer.text.slice(end)
+    const end = buffer.text.lastIndexOf('\n') + 1
+    if (end) {
+      this.emit(stream, attempt, buffer.text.slice(0, end))
+      buffer.text = buffer.text.slice(end)
+    } else if (buffer.text.length > MAX_PENDING) {
+      // Mask first, so complete secrets are hidden; an unfinished one is in the kept tail.
+      const masked = mask(buffer.text)
+      this.emit(stream, attempt, masked.slice(0, -OVERLAP))
+      buffer.text = masked.slice(-OVERLAP)
+    }
   }
 
   // Prints what is left of an attempt's output (or of all output) without a final newline.
@@ -362,6 +371,8 @@ export default class StepLogReporter implements Reporter {
   private emit(stream: NodeJS.WriteStream, attempt: Attempt | undefined, text: string) {
     const prefix = attempt ? `${attemptId(attempt.number)} ` : ''
     const masked = mask(text.replace(/^(?=.)/gm, prefix))
+    // Also in the attempt's step-log.log, so the attachment has the same output as the terminal.
+    if (attempt) attempt.lines.push(...plain(masked).replace(/\n$/, '').split('\n'))
     stream.write(useColor ? masked : plain(masked))
   }
 

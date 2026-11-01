@@ -36,6 +36,7 @@ export function sharedConfig(suffix = ''): PlaywrightTestConfig {
       baseURL: BASE_URL,
       headless: headless === 'true',
       locale: 'pl-PL',
+      // Every attempt, passed ones too. Traces are not masked: they hold the test data.
       trace: 'on',
       screenshot: 'on',
       video: 'retain-on-failure',
