@@ -21,6 +21,7 @@ const USERS = [
   { email: 'e2e-selfunblock@helpdesk.local', name: 'Sara Samoodblok', role: 'AGENT' as const },
   { email: 'e2e-account@helpdesk.local', name: 'Konrad Konto', role: 'AGENT' as const },
   { email: 'e2e-locale@helpdesk.local', name: 'Lucyna Język', role: 'AGENT' as const },
+  { email: 'e2e-ai@helpdesk.local', name: 'Alicja Ai', role: 'AGENT' as const },
 ]
 // Blocked for good at every seed.
 const LOCKED = 'e2e-locked@helpdesk.local'
@@ -38,6 +39,40 @@ const TICKETS: { key: string; subject: string; status: TicketStatus; priority: T
     { key: 'ui-reply', subject: 'E2E Do odpowiedzi', status: 'OPEN', priority: 'MEDIUM' },
     { key: 'ui-assign', subject: 'E2E Do przypisania w UI', status: 'OPEN', priority: 'LOW' },
   ]
+
+// Tickets with a ready-made AI state (the e2e suite never calls a model). Their customers use
+// @ai.example, so they stay out of the klient.example fixture set (see issue #19).
+const AI_TICKETS = [
+  {
+    key: 'ai-ready',
+    subject: 'E2E AI Gotowy wynik',
+    priority: 'MEDIUM' as const,
+    result: {
+      state: 'READY' as const,
+      suggestedPriority: 'URGENT' as const,
+      customerLanguage: 'de',
+      draft: 'Guten Tag, vielen Dank für Ihre Nachricht. Können Sie uns die Fehlermeldung senden?',
+      summaryPl: 'Klient zgłasza awarię logowania i prosi o pilną pomoc.',
+      summaryEn: 'The customer reports a login failure and asks for urgent help.',
+      draftTranslationPl:
+        'Dzień dobry, dziękujemy za wiadomość. Czy może Pan przesłać komunikat błędu?',
+      draftTranslationEn: 'Hello, thank you for your message. Could you send us the error message?',
+      completedAt: new Date(),
+    },
+  },
+  {
+    key: 'ai-failed',
+    subject: 'E2E AI Niepowodzenie',
+    priority: 'MEDIUM' as const,
+    result: { state: 'FAILED' as const, error: 'Ollama unavailable' },
+  },
+  {
+    key: 'ai-pending',
+    subject: 'E2E AI W toku',
+    priority: 'MEDIUM' as const,
+    result: { state: 'PENDING' as const },
+  },
+]
 
 async function seed() {
   // Recreate everything so a previous run (or a manual change) can't leak into this one:
@@ -59,6 +94,21 @@ async function seed() {
         customerEmail: `${t.key}@klient.example`,
         customerName: `Klient ${t.key}`,
         messageId: `${TICKET_PREFIX}${t.key}`,
+      },
+    })
+  }
+
+  for (const t of AI_TICKETS) {
+    await prisma.ticket.create({
+      data: {
+        subject: t.subject,
+        body: `Treść zgłoszenia: ${t.subject}`,
+        status: 'OPEN',
+        priority: t.priority,
+        customerEmail: `${t.key}@ai.example`,
+        customerName: `Klient ${t.key}`,
+        messageId: `${TICKET_PREFIX}${t.key}`,
+        aiResult: { create: t.result },
       },
     })
   }
