@@ -8,16 +8,16 @@ import { LoginPage } from '../pages/LoginPage'
 import { TicketsPage } from '../pages/TicketsPage'
 
 // One account whose languages the tests change: run them one after another, each from a
-// known state (Polish interface, English AI).
+// known state (Polish interface, English AI language).
 test.describe.configure({ mode: 'serial' })
 test.use({ storageState: { cookies: [], origins: [] } })
 
 test.beforeEach(async ({ page }) => {
   const account = await signInAs('ai')
   const reset = await account.post('/api/auth/update-user', {
-    data: { locale: 'pl', aiLocale: 'pl' },
+    data: { locale: 'pl', aiLocale: 'en' },
   })
-  expect(reset.status(), 'Status resetu języków konta (interfejs PL, AI PL)').toBe(200)
+  expect(reset.status(), 'Status resetu języków konta (interfejs PL, AI EN)').toBe(200)
   await account.dispose()
 
   await new LoginPage(page).goto()
@@ -30,36 +30,43 @@ test.describe('Panel AI w tickecie', () => {
     page,
   }) => {
     const { subject } = AI_TICKETS.ready
-    const menu = await new AppShell(page).openUserMenu()
-    await menu
-      .getByRole('group', { name: 'Język', exact: true })
-      .getByRole('menuitemradio', { name: 'EN' })
-      .click()
-    await expect(
-      menu.getByRole('group', { name: 'AI language' }),
-      'Menu jest po angielsku',
-    ).toBeVisible()
-    await menu
-      .getByRole('group', { name: 'AI language' })
-      .getByRole('menuitemradio', { name: 'PL' })
-      .click()
-    await page.keyboard.press('Escape')
-    await expect(page.getByText('Good morning,'), 'Interfejs jest po angielsku').toBeVisible()
+    const plSummary = 'Klient zgłasza awarię logowania i prosi o pilną pomoc.'
+    const enSummary = 'The customer reports a login failure and asks for urgent help.'
 
     const tickets = new TicketsPage(page)
     await tickets.goto('status=all')
     await tickets.search(subject)
     await tickets.open(subject)
 
-    const summary = tickets.panel(subject).getByRole('region', { name: 'AI summary' })
+    // Polish interface, English AI language: the summary is English.
+    const plPanel = tickets.panel(subject).getByRole('region', { name: 'Streszczenie AI' })
     await expect(
-      summary.getByText('Klient zgłasza awarię logowania i prosi o pilną pomoc.'),
-      'Streszczenie jest po polsku mimo angielskiego interfejsu',
+      plPanel.getByText(enSummary),
+      'Przy interfejsie PL i języku AI EN streszczenie jest po angielsku',
     ).toBeVisible()
     await expect(
-      summary.getByText('The customer reports a login failure'),
-      'Angielskie streszczenie nie jest pokazane',
+      plPanel.getByText(plSummary),
+      'Polskie streszczenie nie jest pokazane',
     ).toBeHidden()
+
+    // Now switch both: interface to English, AI language to Polish.
+    const menu = await new AppShell(page).openUserMenu()
+    await menu
+      .getByRole('group', { name: 'Język', exact: true })
+      .getByRole('menuitemradio', { name: 'EN' })
+      .click()
+    const aiGroup = menu.getByRole('group', { name: 'AI language' })
+    await expect(aiGroup, 'Menu jest po angielsku').toBeVisible()
+    await aiGroup.getByRole('menuitemradio', { name: 'PL' }).click()
+    await page.keyboard.press('Escape')
+    await expect(page.getByText('Good morning,'), 'Interfejs jest po angielsku').toBeVisible()
+
+    const enPanel = tickets.panel(subject).getByRole('region', { name: 'AI summary' })
+    await expect(
+      enPanel.getByText(plSummary),
+      'Streszczenie jest po polsku mimo angielskiego interfejsu',
+    ).toBeVisible()
+    await expect(enPanel.getByText(enSummary), 'Angielskie streszczenie zniknęło').toBeHidden()
   })
 
   test('AI2 propozycja priorytetu: Zastosuj zmienia priorytet i historię', async ({ page }) => {
@@ -79,13 +86,15 @@ test.describe('Panel AI w tickecie', () => {
       'Średni',
     )
 
+    const entry = tickets.thread.getByText(`${USERS.ai.name} · Priorytet: Średni → Pilny`)
+    const before = await entry.count()
+
     await tickets.applyPrioritySuggestion(subject, 'Pilny')
 
     await expect(tickets.prioritySelect(subject), 'Priorytet po zastosowaniu').toHaveText('Pilny')
-    await expect(
-      tickets.thread.getByText(`${USERS.ai.name} · Priorytet: Średni → Pilny`).first(),
-      'Zmiana priorytetu jest w historii wątku',
-    ).toBeVisible()
+    await expect(entry, 'To kliknięcie dopisało jeden wpis do historii wątku').toHaveCount(
+      before + 1,
+    )
     await expect(
       tickets.panel(subject).getByText('AI proponuje: Pilny'),
       'Propozycja znika, gdy priorytet jest już taki',
@@ -103,8 +112,8 @@ test.describe('Panel AI w tickecie', () => {
     await expect(draft.getByText('Guten Tag, vielen Dank'), 'Szkic jest po niemiecku').toBeVisible()
     await expect(draft.getByText('Tłumaczenie'), 'Etykieta tłumaczenia szkicu').toBeVisible()
     await expect(
-      draft.getByText('Dzień dobry, dziękujemy za wiadomość.'),
-      'Tłumaczenie szkicu jest po polsku',
+      draft.getByText('Hello, thank you for your message.'),
+      'Tłumaczenie szkicu jest w języku AI (EN)',
     ).toBeVisible()
 
     await draft.getByRole('button', { name: 'Użyj szkicu' }).click()
