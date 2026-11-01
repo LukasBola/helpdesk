@@ -207,4 +207,13 @@ describe('createTicketFromEmail AI hook', () => {
     const ticket = await prisma.ticket.findUnique({ where: { messageId: ids[1] } })
     expect(ticket).not.toBeNull()
   })
+
+  it('processing the same payload twice requests triage exactly once', async () => {
+    const id = 'ai-hook-3@test.com'
+    ids.push(id)
+    const request = vi.fn().mockResolvedValue('queued')
+    await createTicketFromEmail(payload(id), request)
+    await createTicketFromEmail(payload(id), request)
+    expect(request).toHaveBeenCalledTimes(1)
+  })
 })

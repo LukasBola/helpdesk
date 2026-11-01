@@ -11,6 +11,8 @@ export const AI_JOB = 'ai-triage'
 export const AI_JOB_OPTIONS = { retryLimit: 2, retryDelay: 5, retryBackoff: true } as const
 
 const MAX_ERROR_CHARS = 500
+// Exceeds 3 attempts x 120 s timeout + backoff; older PENDING rows are treated as abandoned.
+export const AI_STALE_PENDING_MS = 15 * 60_000
 
 export interface AiJobData {
   ticketId: string
@@ -22,8 +24,8 @@ let queueReady: { boss: PgBoss; promise: Promise<void> } | null = null
 
 function ensureAiQueue(boss: PgBoss): Promise<void> {
   if (!queueReady || queueReady.boss !== boss) {
-    const promise = boss.createQueue(AI_JOB).catch(err => {
-      queueReady = null
+    const promise: Promise<void> = boss.createQueue(AI_JOB).catch(err => {
+      if (queueReady?.promise === promise) queueReady = null
       throw err
     })
     queueReady = { boss, promise }
@@ -34,7 +36,13 @@ function ensureAiQueue(boss: PgBoss): Promise<void> {
 async function markPending(ticketId: string): Promise<boolean> {
   // Conditional update: only one concurrent caller can flip a non-PENDING row to PENDING.
   const updated = await prisma.ticketAiResult.updateMany({
-    where: { ticketId, state: { not: 'PENDING' } },
+    where: {
+      ticketId,
+      OR: [
+        { state: { not: 'PENDING' } },
+        { updatedAt: { lt: new Date(Date.now() - AI_STALE_PENDING_MS) } },
+      ],
+    },
     data: { state: 'PENDING' },
   })
   if (updated.count > 0) return true

@@ -66,7 +66,10 @@ describe('handleAiJob', () => {
 
 describe('requestAiTriage', () => {
   it('does not queue twice while PENDING', async () => {
-    await prisma.ticketAiResult.update({ where: { ticketId }, data: { state: 'READY' } })
+    await prisma.ticketAiResult.update({
+      where: { ticketId },
+      data: { state: 'READY', draft: 'previous draft' },
+    })
     const boss = await getQueue()
     await boss.createQueue(AI_JOB)
 
@@ -75,6 +78,17 @@ describe('requestAiTriage', () => {
     const row = await prisma.ticketAiResult.findUniqueOrThrow({ where: { ticketId } })
     expect(row.state).toBe('PENDING')
     expect(row.draft).toBe('previous draft')
+  })
+
+  it('re-queues a PENDING row only when it is stale', async () => {
+    const setAge = (minutes: number) => {
+      const at = new Date(Date.now() - minutes * 60_000)
+      return prisma.$executeRaw`UPDATE "ticket_ai_results" SET "state" = 'PENDING', "updatedAt" = ${at} WHERE "ticketId" = ${ticketId}`
+    }
+    await setAge(1)
+    expect(await requestAiTriage(ticketId)).toBe('already-pending')
+    await setAge(16)
+    expect(await requestAiTriage(ticketId)).toBe('queued')
   })
 
   it('marks FAILED when enqueue fails and allows a later retry', async () => {
