@@ -24,6 +24,7 @@ export async function setup() {
   process.env.BETTER_AUTH_URL = 'http://localhost:3000'
   process.env.NODE_ENV = 'test'
   process.env.POSTMARK_WEBHOOK_TOKEN = 'test-token'
+  process.env.AI_PROVIDER = 'fake'
 
   const prismaPath = path.join(__dirname, '../../node_modules/prisma/build/index.js')
   const serverDir = path.join(__dirname, '../..')

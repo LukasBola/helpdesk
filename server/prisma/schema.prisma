@@ -28,6 +28,12 @@ enum TicketPriority {
   URGENT
 }
 
+enum AiResultState {
+  PENDING
+  READY
+  FAILED
+}
+
 enum AIInteractionType {
   CLASSIFICATION
   SUMMARY
@@ -44,6 +50,7 @@ model User {
   role          Role     @default(AGENT)
   isBlocked     Boolean  @default(false)
   locale        String?
+  aiLocale      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -75,6 +82,7 @@ model Ticket {
   history        TicketHistory[]
   replies        Reply[]
   aiInteractions AIInteraction[]
+  aiResult       TicketAiResult?
 
   @@index([customerEmail])
   @@index([status, assigneeId])
@@ -122,12 +130,36 @@ model AIInteraction {
   outputTokens Int               @default(0)
   costUsd      Float             @default(0)
   latencyMs    Int               @default(0)
+  provider     String            @default("unknown")
+  model        String            @default("unknown")
+  success      Boolean           @default(true)
+  error        String?
+  userId       String?
   createdAt    DateTime          @default(now())
 
-  ticket Ticket? @relation(fields: [ticketId], references: [id])
+  ticket Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
   @@index([ticketId])
   @@map("ai_interactions")
+}
+
+model TicketAiResult {
+  ticketId           String          @id
+  state              AiResultState
+  error              String?
+  suggestedPriority  TicketPriority?
+  customerLanguage   String?
+  draft              String?
+  summaryPl          String?
+  summaryEn          String?
+  draftTranslationPl String?
+  draftTranslationEn String?
+  completedAt        DateTime?
+  updatedAt          DateTime        @updatedAt
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("ticket_ai_results")
 }
 
 model Document {
