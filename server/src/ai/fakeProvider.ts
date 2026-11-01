@@ -1,4 +1,5 @@
-import type { AiProvider, StructuredRequest, StructuredResult } from './types'
+import type { StructuredRequest, StructuredResult } from './types'
+import { AiInvalidOutputError, type AiProvider } from './types'
 
 function defaultRespond(req: StructuredRequest<unknown>): unknown {
   if (req.kind === 'analysis') {
@@ -24,9 +25,18 @@ export function createFakeProvider(
     model: 'fake',
     async generate<T>(req: StructuredRequest<T>): Promise<StructuredResult<T>> {
       const out = respond(req as StructuredRequest<unknown>)
+      const raw = JSON.stringify(out)
+      const parsed = req.schema.safeParse(out)
+      if (!parsed.success) {
+        throw new AiInvalidOutputError(`Fake output fails schema: ${parsed.error.message}`, raw, {
+          inputTokens: 0,
+          outputTokens: 0,
+          latencyMs: 0,
+        })
+      }
       return {
-        data: out as T,
-        raw: JSON.stringify(out),
+        data: parsed.data,
+        raw,
         inputTokens: 0,
         outputTokens: 0,
         latencyMs: 0,
