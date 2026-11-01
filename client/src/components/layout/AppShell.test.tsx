@@ -5,11 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { refreshSession, signOut } from '@/lib/auth-client'
 import { mockSession, renderRoute } from '@/test/render'
 
-vi.mock('@/lib/auth-client', () => ({
-  useSession: vi.fn(),
-  signIn: { email: vi.fn() },
-  signOut: vi.fn(),
-  refreshSession: vi.fn(),
+// Dynamic import: a static one may evaluate after '@/lib/auth-client' is first imported.
+vi.mock('@/lib/auth-client', async () => (await import('@/test/auth-client-mock')).authClientMock())
+// The tickets page behind /tickets fetches on mount; answer with empty data.
+vi.mock('@/lib/api', () => ({
+  api: {
+    get: vi.fn(async () => ({ data: { tickets: [], users: [], total: 0, page: 1, limit: 25 } })),
+  },
 }))
 
 describe('AppShell', () => {
@@ -23,6 +25,15 @@ describe('AppShell', () => {
     renderRoute('/tickets')
     expect(screen.getByText('Dzień dobry,')).toBeInTheDocument()
     expect(screen.getByText('Anna 👋')).toBeInTheDocument()
+  })
+
+  it('renders the page title as the only h1 and sets document.title', () => {
+    mockSession({})
+    renderRoute('/tickets/mine')
+    const headings = screen.getAllByRole('heading', { level: 1 })
+    expect(headings).toHaveLength(1)
+    expect(headings[0]).toHaveTextContent('Moje')
+    expect(document.title).toBe('Moje · helpdesk')
   })
 
   it('hides Użytkownicy for an AGENT', () => {

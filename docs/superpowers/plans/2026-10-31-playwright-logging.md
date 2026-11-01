@@ -14,7 +14,7 @@ Plan zastępuje pierwszą wersję (wrappery logujące w testach, kontrola pokryc
 
 ## Zadania
 
-- [x] **1. Reporter** `e2e/reporters/step-log.ts` + `e2e/reporters/format.ts`: linie START/END/ERROR w stałych kolumnach z symbolami Unicode i kolorami ANSI tylko w terminalu/CI (ISO 8601 UTC, poziom, id `T001.S004`, faza, wynik, czas, rodzaj, treść z lokalizacją), `INCOMPLETE` dla kroków bez END, podsumowanie błędów z pierwszym krokiem, który zawiódł (najgłębszym w swojej gałęzi), załącznik `step-log.log` dla każdej próby, `E2E_LOG=tests`, obsługa `--list`. Zastępuje reporter `list` w `e2e/playwright.config.ts`.
+- [x] **1. Reporter** `e2e/reporters/step-log.ts` + `e2e/reporters/format.ts`: linie START/END/ERROR w stałych kolumnach z symbolami Unicode i kolorami ANSI tylko w terminalu/CI (ISO 8601 UTC, poziom, id `T001.S004`, faza, wynik, czas, rodzaj, treść z lokalizacją), `INCOMPLETE` dla kroków bez END, podsumowanie błędów z pierwszym krokiem, który zawiódł (najgłębszym w swojej gałęzi), załącznik `step-log.log` dla każdej próby, `E2E_LOG=tests`, obsługa `--list`. Zastępuje reporter `list` we wspólnej konfiguracji `e2e/playwright.shared.ts` (UI i API).
 - [x] **2. Maskowanie** `e2e/reporters/mask.ts`: jedno miejsce dla terminala i załącznika.
 - [x] **3. Page Objects:** dekorator `@step` (`e2e/pages/step.ts`) z `box: true` i lokalizacją wywołania; użyty w `LoginPage` i `AppShell`.
 - [x] **4. Global setup:** linie `GLOBAL` w tym samym formacie (`e2e/global-setup.ts`).

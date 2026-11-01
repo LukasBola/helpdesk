@@ -25,6 +25,24 @@
     --input: 214 32% 91%;
     --ring: 243 75% 59%;
     --radius: 0.875rem;
+
+    /* Ticket semantic tokens: pastel background + dark text (WCAG AA, see commit) */
+    --status-open: 214 95% 93%;
+    --status-open-fg: 224 76% 33%;
+    --status-in-progress: 45 96% 88%;
+    --status-in-progress-fg: 26 90% 25%;
+    --status-resolved: 149 80% 90%;
+    --status-resolved-fg: 161 94% 18%;
+    --status-closed: 220 14% 92%;
+    --status-closed-fg: 220 14% 30%;
+    --priority-low: 188 60% 91%;
+    --priority-low-fg: 190 80% 20%;
+    --priority-medium: 226 100% 93%;
+    --priority-medium-fg: 243 60% 38%;
+    --priority-high: 25 95% 88%;
+    --priority-high-fg: 17 85% 28%;
+    --priority-urgent: 347 77% 42%;
+    --priority-urgent-fg: 0 0% 100%;
   }
 
   .dark {

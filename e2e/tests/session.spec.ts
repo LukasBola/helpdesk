@@ -33,7 +33,7 @@ test.describe('Sesja: zalogowany użytkownik', () => {
   test('U13 strona ma język polski i tytuł', async ({ page }) => {
     await page.goto('/tickets')
     await expect(page.locator('html'), 'Element <html> ma lang="pl"').toHaveAttribute('lang', 'pl')
-    await expect(page, 'Tytuł strony to „Helpdesk”').toHaveTitle('Helpdesk')
+    await expect(page, 'Tytuł strony to „Tickety · helpdesk”').toHaveTitle('Tickety · helpdesk')
   })
 
   test('U15 SPA pobiera sesję przez proxy /api/auth/get-session', async ({ page }) => {

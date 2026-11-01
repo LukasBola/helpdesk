@@ -23,7 +23,7 @@ export async function listTickets(opts: ListOptions) {
 
   if (opts.status) where.status = opts.status
   if (opts.priority) where.priority = opts.priority
-  if (opts.assigneeId) where.assigneeId = opts.assigneeId
+  if (opts.assigneeId) where.assigneeId = opts.assigneeId === 'none' ? null : opts.assigneeId
   if (opts.search) {
     const search = escapeLike(opts.search)
     where.OR = [
@@ -37,14 +37,19 @@ export async function listTickets(opts: ListOptions) {
   const limit = opts.limit ?? 25
   const skip = (page - 1) * limit
 
+  const field = opts.orderBy ?? 'createdAt'
+  const order = opts.order ?? 'desc'
+  // id breaks ties, so offset pagination never repeats or skips rows.
+  // Within one priority, the oldest ticket comes first regardless of direction.
+  const orderBy: Prisma.TicketOrderByWithRelationInput[] =
+    field === 'priority'
+      ? [{ priority: order }, { createdAt: 'asc' }, { id: 'asc' }]
+      : [{ [field]: order }, { id: order }]
+
   const [tickets, total] = await prisma.$transaction([
     prisma.ticket.findMany({
       where,
-      // id breaks ties, so offset pagination never repeats or skips rows.
-      orderBy: [
-        { [opts.orderBy ?? 'createdAt']: opts.order ?? 'desc' },
-        { id: opts.order ?? 'desc' },
-      ],
+      orderBy,
       skip,
       take: limit,
       include: { assignee: { select: { id: true, name: true, email: true } } },
@@ -128,5 +133,40 @@ export async function updateTicket(id: string, fields: UpdateFields, actorId: st
     }
 
     return updated
+  })
+}
+
+export const REPLY_MAX_LENGTH = 10_000
+
+// Saves the reply and, for an OPEN ticket, moves it to IN_PROGRESS in the same transaction.
+// The status is changed by a conditional updateMany so Postgres settles races: a concurrent
+// change (e.g. RESOLVED) is never overwritten and only one writer records the history row.
+export async function createReply(ticketId: string, body: string, actorId: string) {
+  return prisma.$transaction(async tx => {
+    const ticket = await tx.ticket.findUnique({ where: { id: ticketId }, select: { id: true } })
+    if (!ticket) return null
+
+    const reply = await tx.reply.create({
+      data: { ticketId, userId: actorId, body },
+      include: { user: { select: { id: true, name: true } } },
+    })
+
+    const { count } = await tx.ticket.updateMany({
+      where: { id: ticketId, status: 'OPEN' },
+      data: { status: 'IN_PROGRESS' },
+    })
+    if (count === 1) {
+      await tx.ticketHistory.create({
+        data: {
+          ticketId,
+          userId: actorId,
+          field: 'status',
+          oldValue: 'OPEN',
+          newValue: 'IN_PROGRESS',
+        },
+      })
+    }
+
+    return reply
   })
 }

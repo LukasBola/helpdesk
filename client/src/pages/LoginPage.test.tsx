@@ -5,11 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { signIn } from '@/lib/auth-client'
 import { mockSession, renderRoute } from '@/test/render'
 
-vi.mock('@/lib/auth-client', () => ({
-  useSession: vi.fn(),
-  signIn: { email: vi.fn() },
-  signOut: vi.fn(),
-  refreshSession: vi.fn(),
+// Dynamic import: a static one may evaluate after '@/lib/auth-client' is first imported.
+vi.mock('@/lib/auth-client', async () => (await import('@/test/auth-client-mock')).authClientMock())
+// The tickets page behind /tickets fetches on mount; answer with empty data.
+vi.mock('@/lib/api', () => ({
+  api: {
+    get: vi.fn(async () => ({ data: { tickets: [], users: [], total: 0, page: 1, limit: 25 } })),
+  },
 }))
 
 const signInEmail = vi.mocked(signIn.email)
@@ -111,5 +113,15 @@ describe('LoginPage', () => {
     mockSession({ isBlocked: true })
     renderRoute('/login')
     expect(screen.getByRole('button', { name: 'Zaloguj się' })).toBeInTheDocument()
+  })
+
+  it('switches the login page to English', async () => {
+    renderRoute('/login')
+    mockSession(null)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'EN' }))
+    expect(screen.getByText('Sign in to the agent panel')).toBeInTheDocument()
+    expect(localStorage.getItem('helpdesk.lang')).toBe('en')
+    expect(document.documentElement.lang).toBe('en')
   })
 })
