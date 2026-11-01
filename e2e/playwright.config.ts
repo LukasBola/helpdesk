@@ -27,6 +27,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: [
     // Live START/END log of tests and steps (masked). See e2e/reporters/step-log.ts.
+    // Keep it first: it adds the step-log.log attachment that html and junit then include.
     ['./reporters/step-log.ts'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['junit', { outputFile: 'test-results/junit.xml' }],

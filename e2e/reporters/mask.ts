@@ -6,6 +6,8 @@ const REDACTED = '[REDACTED]'
 // that contains another one is replaced as a whole.
 const KNOWN = [
   ...Object.values(USERS).flatMap(user => [user.password, user.name]),
+  // Read here, not via USERS: users.ts is imported before the config loads .env.
+  process.env.E2E_PASSWORD,
   process.env.POSTMARK_WEBHOOK_TOKEN,
 ]
   .filter((value): value is string => !!value && value.length >= 4)
@@ -13,7 +15,7 @@ const KNOWN = [
 
 const PATTERNS: [RegExp, string][] = [
   [/[\w.%+-]+@[\w-]+(\.[\w-]+)+/g, REDACTED], // e-mail addresses
-  [/\bBearer\s+[\w.~+/=-]+/gi, `Bearer ${REDACTED}`],
+  [/\b(Bearer|Basic)\s+[\w.~+/=-]+/gi, `$1 ${REDACTED}`],
   [
     /\b([\w.-]*(?:password|passwd|secret|token|authorization|cookie|api[_-]?key))(["']?\s*[:=]\s*["']?)[^\s"',;&]+/gi,
     `$1$2${REDACTED}`,

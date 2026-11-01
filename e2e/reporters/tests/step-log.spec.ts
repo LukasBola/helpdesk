@@ -32,6 +32,7 @@ test('mask hides known passwords, e-mails and token values', () => {
   expect(mask('Cookie: session_token=abc.def; Authorization: Bearer xyz')).not.toMatch(
     /abc\.def|xyz/,
   )
+  expect(mask('Authorization: Basic dXNlcjpwYXNz'), 'Nagłówek Basic').not.toContain('dXNlcjpwYXNz')
   expect(mask('GET /api/tickets?status=OPEN')).toBe('GET /api/tickets?status=OPEN')
 })
 
@@ -134,11 +135,63 @@ test.describe('step-log reporter on intentionally failing cases', () => {
     expect(output).not.toMatch(/e2e-password-123|e2e-admin@helpdesk\.local|abc123/)
   })
 
+  test('typed test values stay visible, known secrets are masked', () => {
+    const lines = log('secrets are masked')
+    expect(lines, 'Wartość wpisana w teście jest widoczna').toMatch(
+      /ACTION Fill "to-nie-jest-email" \[getByLabel\('E-mail'\)\]/,
+    )
+    expect(lines, 'Znane hasło e2e jest zamaskowane').toMatch(
+      /ACTION Fill "\[REDACTED\]" \[getByLabel\('Hasło'\)\]/,
+    )
+  })
+
+  test('a secret split across two stdout writes is masked as one line', () => {
+    expect(output, 'Token rozbity na dwa zapisy').not.toMatch(/split|Token987/)
+    expect(output, 'Cała linia z prefiksem próby').toMatch(/^T\d{3} Authorization: \[REDACTED\]/m)
+  })
+
   test('each retry is a separate attempt with its own outcome', () => {
     expect(output).toMatch(/START .*flaky passes on retry \(worker \d+, retry 0\)/)
     expect(output).toMatch(/START .*flaky passes on retry \(worker \d+, retry 1\)/)
-    expect(output).toMatch(/2 passed, 3 failed, 1 flaky, 0 skipped/)
+    expect(output).toMatch(/3 passed, 3 failed, 1 flaky, 0 skipped, 1 expected to fail, 0 not run/)
     expect(output).not.toMatch(/^\d+\) .*flaky passes on retry/m)
+  })
+
+  test('a skipped step is SKIPPED, not PASS', () => {
+    expect(log('skipped and multi-line steps'), 'Krok test.step.skip').toMatch(
+      /WARN .* ⊘ END {3}SKIPPED +\d+ ms +STEP {3}Not run @/,
+    )
+  })
+
+  test('a multi-line step title stays on one log line', () => {
+    const lines = log('skipped and multi-line steps')
+    expect(lines, 'Tytuł z nową linią').toMatch(/▸ START +STEP {3}First line⏎ second line @ /)
+    expect(output, 'Druga linia tytułu nie trafia do logu osobno').not.toMatch(/^second line/m)
+  })
+
+  test('tests that never ran are counted after --max-failures', () => {
+    const run = (() => {
+      try {
+        return execFileSync(
+          'pnpm',
+          [
+            'exec',
+            'playwright',
+            'test',
+            '-c',
+            path.join(CASES, 'playwright.config.ts'),
+            '--max-failures=1',
+            '--workers=1',
+            '--retries=0',
+            `--reporter=${path.join(import.meta.dirname, '..', 'step-log.ts')}`,
+          ],
+          { encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } },
+        )
+      } catch (error) {
+        return (error as { stdout: string }).stdout
+      }
+    })()
+    expect(run, 'Podsumowanie z liczbą nieuruchomionych').toMatch(/, [1-9]\d* not run$/m)
   })
 
   test('a timed out step is never reported as PASS and is named as the failed step', () => {
@@ -156,7 +209,7 @@ test.describe('step-log reporter on intentionally failing cases', () => {
     expect(output).toMatch(/Expected: 2\n\s+Received: 1/)
   })
 
-  test('each attempt gets its own log as the step-log.txt attachment', () => {
+  test('each attempt gets its own log as the step-log.log attachment', () => {
     const report = JSON.parse(
       readFileSync(path.join(CASES, 'test-results', 'report.json'), 'utf8'),
     ) as JsonSuite
@@ -166,7 +219,7 @@ test.describe('step-log reporter on intentionally failing cases', () => {
     ]
     const flaky = specs(report).find(spec => spec.title === 'flaky passes on retry')
     const logs = (flaky?.tests[0].results ?? []).map(result => {
-      const attachment = result.attachments.find(a => a.name === 'step-log.txt')
+      const attachment = result.attachments.find(a => a.name === 'step-log.log')
       return Buffer.from(attachment?.body ?? '', 'base64').toString()
     })
     expect(logs, 'Liczba załączników (dwie próby)').toHaveLength(2)

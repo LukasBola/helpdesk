@@ -14,7 +14,7 @@ Plan zastępuje pierwszą wersję (wrappery logujące w testach, kontrola pokryc
 
 ## Zadania
 
-- [x] **1. Reporter** `e2e/reporters/step-log.ts` + `e2e/reporters/format.ts`: linie START/END/ERROR w stałych kolumnach z symbolami Unicode i kolorami ANSI tylko w terminalu/CI (ISO 8601 UTC, poziom, id `T001.S004`, faza, wynik, czas, rodzaj, treść z lokalizacją), `INCOMPLETE` dla kroków bez END, podsumowanie błędów z najgłębszym krokiem, załącznik `step-log.txt` dla każdej próby, `E2E_LOG=tests`, obsługa `--list`. Zastępuje reporter `list` w `e2e/playwright.config.ts`.
+- [x] **1. Reporter** `e2e/reporters/step-log.ts` + `e2e/reporters/format.ts`: linie START/END/ERROR w stałych kolumnach z symbolami Unicode i kolorami ANSI tylko w terminalu/CI (ISO 8601 UTC, poziom, id `T001.S004`, faza, wynik, czas, rodzaj, treść z lokalizacją), `INCOMPLETE` dla kroków bez END, podsumowanie błędów z pierwszym krokiem, który zawiódł (najgłębszym w swojej gałęzi), załącznik `step-log.log` dla każdej próby, `E2E_LOG=tests`, obsługa `--list`. Zastępuje reporter `list` w `e2e/playwright.config.ts`.
 - [x] **2. Maskowanie** `e2e/reporters/mask.ts`: jedno miejsce dla terminala i załącznika.
 - [x] **3. Page Objects:** dekorator `@step` (`e2e/pages/step.ts`) z `box: true` i lokalizacją wywołania; użyty w `LoginPage` i `AppShell`.
 - [x] **4. Global setup:** linie `GLOBAL` w tym samym formacie (`e2e/global-setup.ts`).
@@ -26,6 +26,6 @@ Plan zastępuje pierwszą wersję (wrappery logujące w testach, kontrola pokryc
 ## Weryfikacja (2026-11-01)
 
 - `pnpm typecheck`, `pnpm lint`, `pnpm format:check`: OK.
-- `pnpm e2e:reporter:test` (także z `CI=true`): 12 passed.
+- `pnpm e2e:reporter:test` (także z `CI=true`): 17 passed.
 - `pnpm e2e`: 118 passed, 1 skipped; w logu brak haseł i adresów `@helpdesk.local`.
 - `--list` przed i po zmianach: identyczne, 119 testów.

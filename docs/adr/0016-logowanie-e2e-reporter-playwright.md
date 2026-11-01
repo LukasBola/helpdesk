@@ -25,12 +25,14 @@ Logowanie realizuje jeden własny reporter (`e2e/reporters/step-log.ts`) nasłuc
 **Pozytywne**
 
 - Testy to zwykły kod Playwright; nowy test jest logowany bez dodatkowej pracy.
-- Reporter widzi każde zdarzenie, więc kontrola pokrycia logowania jest zbędna.
-- Jedno miejsce formatu i maskowania (terminal i `step-log.txt`).
+- Reporter widzi każdy krok, akcję i asercję zgłaszane przez Playwright, więc kontrola pokrycia logowania jest zbędna.
+- Jedno miejsce formatu i maskowania (terminal i `step-log.log`).
 
 **Negatywne / koszty**
 
 - Brak wartości „actual” dla udanych asercji web-first (API jej nie udostępnia).
+- Reporter nie widzi kroków wewnątrz fixture ani zwykłego kodu Node (np. `db.*` przez `execSync`).
+- Maskowanie to zabezpieczenie dodatkowe, nie gwarancja: obejmuje znane sekrety (hasła e2e, także `E2E_PASSWORD` z `.env`, pełne imiona i nazwiska użytkowników e2e, token webhooka) oraz wzorce (e-mail, `Bearer`/`Basic`, `token=`/`password=`…). Wartości wpisywane akcjami (`Fill "…"`) są celowo widoczne, bo bywają sednem testu (np. zły format e-maila, puste hasło); maskowane są tylko znane sekrety. Stdout testów jest maskowany całymi liniami (sekret rozbity na dwa zapisy też). Wartość spoza listy, nierozpoznany sekret w wolnym tekście lub samo imię przechodzą bez zmian; dlatego dane e2e są wyłącznie fikcyjne. Trace i natywne kroki raportu HTML nie są maskowane.
 - Log nie trafia do wnętrza trace'a, tylko obok niego w raporcie HTML; dodanie załącznika przez reporter opiera się na mutacji `result.attachments`, której dokumentacja wprost nie opisuje [wniosek].
 - Własny kod reportera do utrzymania (testy w CI).
 
@@ -41,7 +43,7 @@ Logowanie realizuje jeden własny reporter (`e2e/reporters/step-log.ts`) nasłuc
 ## Dowody
 
 - `e2e/reporters/step-log.ts` – reporter, format i załącznik
-- `e2e/reporters/tests/step-log.spec.ts` – kontrakt reportera (12 testów)
+- `e2e/reporters/tests/step-log.spec.ts` – kontrakt reportera (17 testów)
 - `e2e/pages/step.ts` – dekorator `@step`
 - `eslint.config.js` – reguła wymagająca opisu w `expect`
 - `docs/superpowers/specs/2026-10-31-playwright-logging-design.md` – spec po zmianie podejścia

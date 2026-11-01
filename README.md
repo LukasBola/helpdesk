@@ -261,7 +261,7 @@ Structure: `e2e/pages/` holds the page objects (`LoginPage`, `AppShell`), `e2e/f
 
 #### Test log
 
-Tests are plain Playwright code: no logging calls inside tests, page objects or helpers. The step-log reporter (`e2e/reporters/step-log.ts`) listens to Playwright's own step events and writes one line per event for every test, hook, `test.step`, Playwright action and assertion.
+Tests are plain Playwright code: no logging calls inside tests, page objects or helpers. The step-log reporter (`e2e/reporters/step-log.ts`) listens to Playwright's own step events and writes one line per event for every test, hook, `test.step`, Playwright action and assertion. It sees only what Playwright reports: steps inside fixtures are hidden, and plain Node code (e.g. `db.*` helpers running `execSync`) produces no lines.
 
 Each line has fixed-width columns: timestamp (ISO 8601, UTC), level (`INFO`, `WARN`, `ERROR`), id, symbol, phase, outcome and duration. Then comes the tree part: kind (`TEST`, `HOOK`, `STEP`, `ACTION`, `ASSERT`, `GLOBAL`), indented by nesting, text and `@ file:line`. `START` and `END` of the same step have the same id and exactly the same tree part:
 
@@ -274,11 +274,12 @@ Each line has fixed-width columns: timestamp (ISO 8601, UTC), level (`INFO`, `WA
 ```
 
 - **Symbols:** `▸` start, `✓` pass, `✗` fail/timeout/incomplete, `⊘` skipped, `↳` error detail. They are plain Unicode text characters (not emoji), one column wide in a terminal and in CI logs.
-- **Colors:** ANSI colors only in a terminal or CI (GitHub Actions shows them). Piped or redirected output has none; `NO_COLOR=1` turns them off, `FORCE_COLOR=1` on. The `step-log.txt` attachment is always plain text.
-- **Id:** `T001` is one test attempt (each retry gets a new one), `T001.S004` is a step in it. Lines of parallel tests interleave; filter one attempt with `grep T001` or one step with `grep T001.S004`.
+- **Colors:** ANSI colors only in a terminal or CI (GitHub Actions shows them). Piped or redirected output has none; `NO_COLOR=1` turns them off, `FORCE_COLOR=1` on. The `step-log.log` attachment is always plain text.
+- **Id:** `T001` is one test attempt (each retry gets a new one), `T001.S004` is a step in it. Lines of parallel tests interleave; filter one attempt with `grep -F T001` or one step with `grep -F T001.S004`. A line break in a step title or assertion message is shown as `⏎`, so one event is always one line.
 - **Outcome:** `PASS`, `FAIL`, `TIMEOUT`, `INTERRUPTED`, `SKIPPED`, or `INCOMPLETE` for a step that never ended (timeout, killed worker); an unfinished step is never shown as `PASS`.
-- **Failures:** at the end of the run every failed test is listed with the innermost failed step (id, kind, text, location), its step path, the trace command and the full Playwright error (expected/received, call log).
-- **HTML report:** every attempt has its own log as the `step-log.txt` attachment, next to its trace. The trace itself shows the same steps in its Actions panel.
+- **Summary:** the last line counts `passed`, `failed`, `flaky`, `skipped`, `expected to fail` (`test.fail()`) and `not run` (e.g. after `--max-failures`) tests.
+- **Failures:** at the end of the run every failed test is listed with the first step that failed, innermost in its branch (id, kind, text, location), its step path, the trace command and the full Playwright error (expected/received, call log).
+- **HTML report:** every attempt has its own log as the `step-log.log` attachment, next to its trace. The trace itself shows the same steps in its Actions panel.
 
 To make the log readable:
 
@@ -286,7 +287,7 @@ To make the log readable:
 - Group several actions with `await test.step('Assign the ticket', async () => { ... })`.
 - Page object methods marked `@step` (see `e2e/pages/step.ts`) appear as one step, e.g. `LoginPage.login`, with the line of the test that called them.
 
-`E2E_LOG=tests pnpm e2e` prints only test `START`/`END` lines (the attachment is always complete). The reporter masks known e2e passwords and names, e-mail addresses and token/cookie/password values in the terminal and in `step-log.txt` (`e2e/reporters/mask.ts`). Playwright's own HTML step tree and traces are not masked. Reporter checks: `pnpm e2e:reporter:test` (no app or database needed; also runs in CI as the `e2e-reporter` job). Design: [ADR-0016](docs/adr/0016-logowanie-e2e-reporter-playwright.md).
+`E2E_LOG=tests pnpm e2e` prints only test `START`/`END` lines (the attachment is always complete). The reporter masks known secrets in the terminal and in `step-log.log` (`e2e/reporters/mask.ts`): e2e passwords (including `E2E_PASSWORD` from `.env`), full names of e2e users, `POSTMARK_WEBHOOK_TOKEN`, e-mail addresses, `Bearer`/`Basic` credentials and token/cookie/password values. Values typed by actions stay visible for debugging (`Fill "to-nie-jest-email"`, `Fill ""`); only the known secrets above are replaced (`Fill "[REDACTED]"`). Test output (`console.log`) is masked line by line, so a secret split across two writes is still caught. It is a safety net, not a guarantee (a value typed by a test that is not on the list, a first name alone or a free-text secret is printed as is), so e2e tests must use fictional data only. Playwright's own HTML step tree and traces (which also capture stdout) are not masked. Reporter checks: `pnpm e2e:reporter:test` (no app or database needed; also runs in CI as the `e2e-reporter` job). Design: [ADR-0016](docs/adr/0016-logowanie-e2e-reporter-playwright.md).
 
 Traces are kept for every failed test locally (`retain-on-failure`) and recorded on the first retry in CI (`on-first-retry`, as recommended by Playwright). Open them from the HTML report with `pnpm e2e:report`, or run `pnpm exec playwright show-trace <path-to-trace.zip>`. Traces may contain sensitive test data and are overwritten by subsequent runs.
 

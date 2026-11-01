@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
 // Run by step-log.spec.ts in a child process; these cases fail on purpose.
-// The JSON report lets the spec check the per-attempt step-log.txt attachment.
+// The JSON report lets the spec check the per-attempt step-log.log attachment.
 export default defineConfig({
   testDir: '.',
   testMatch: '*.case.ts',

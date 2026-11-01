@@ -79,7 +79,8 @@ export function formatRecord(record: LogRecord): FormattedLine {
   const [symbol, color] = SYMBOL[record.phase === 'END' ? (record.outcome ?? 'PASS') : record.phase]
   const duration = record.durationMs === undefined ? '' : `${Math.round(record.durationMs)} ms`
   const indent = '  '.repeat(record.depth ?? 0)
-  const text = mask(record.text)
+  // One event = one line: a newline in a step title or assertion message stays visible.
+  const text = mask(record.text.replace(/\r?\n/g, '⏎ '))
   const location = record.location ? ` @ ${mask(record.location)}` : ''
 
   const columns = [

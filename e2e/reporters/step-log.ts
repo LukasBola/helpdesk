@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { StringDecoder } from 'node:string_decoder'
 
 import type {
   FullConfig,
@@ -27,7 +28,7 @@ import { mask } from './mask'
 // of test events): tests stay plain Playwright code, every step is reported here.
 // https://playwright.dev/docs/api/class-reporter
 //
-// Each attempt also gets its log as the `step-log.txt` attachment, shown in the HTML
+// Each attempt also gets its log as the `step-log.log` attachment, shown in the HTML
 // report next to the attempt's trace. Line format: see ./format.ts.
 //
 // E2E_LOG=tests prints only test START/END to the terminal; the attachment is always full.
@@ -45,6 +46,8 @@ const OUTCOME: Record<TestResult['status'], Outcome> = {
   skipped: 'SKIPPED',
   interrupted: 'INTERRUPTED',
 }
+// A console.log longer than this without a newline is printed in parts.
+const MAX_PENDING = 64 * 1024
 
 interface FailedStep {
   id: string
@@ -74,6 +77,10 @@ export default class StepLogReporter implements Reporter {
   private readonly running = new Map<TestResult, Attempt>()
   // Kept per test: the last attempt wins, so a flaky test is not listed as failed.
   private readonly lastAttempt = new Map<TestCase, Failure>()
+  private total = 0
+  // stdout/stderr come in chunks split at arbitrary points: lines are masked only when complete,
+  // so a secret split across two chunks is still caught. Keyed by stream and attempt.
+  private readonly pending = new Map<string, { decoder: StringDecoder; text: string }>()
 
   printsToStdio() {
     return true
@@ -82,6 +89,7 @@ export default class StepLogReporter implements Reporter {
   onBegin(config: FullConfig, suite: Suite) {
     this.rootDir = config.rootDir
     const tests = suite.allTests()
+    this.total = tests.length
     if (process.argv.includes('--list')) {
       for (const test of tests) this.print(mask(this.describe(test)))
       this.print(`Total: ${tests.length} tests`)
@@ -118,7 +126,8 @@ export default class StepLogReporter implements Reporter {
   onStepEnd(_test: TestCase, result: TestResult, step: TestStep) {
     const attempt = this.running.get(result)
     if (!attempt || !attempt.open.delete(step)) return
-    const outcome = step.error ? 'FAIL' : 'PASS'
+    const skipped = step.annotations.some(a => a.type === 'skip')
+    const outcome = step.error ? 'FAIL' : skipped ? 'SKIPPED' : 'PASS'
     const record = this.stepRecord(attempt, step, 'END', outcome, step.duration)
     this.write(attempt, this.printSteps, record)
     if (!step.error) return
@@ -130,7 +139,8 @@ export default class StepLogReporter implements Reporter {
       text: errorSummary(step.error),
       location: undefined,
     })
-    // Children end before their parents: the first failed step is the innermost one.
+    // Children end before their parents: the first failed step is the innermost one of its
+    // branch. A later failure (e.g. after a soft assertion) does not replace it.
     attempt.failedStep ??= this.failedStep(record, step)
   }
 
@@ -146,6 +156,7 @@ export default class StepLogReporter implements Reporter {
     const attempt = this.running.get(result)
     if (!attempt) return
     this.running.delete(result)
+    this.flush(attempt)
 
     // A step without END (timeout, crash, killed worker) must not look like a PASS.
     // Innermost first, like a normal END order; the innermost one is where the test stopped.
@@ -170,7 +181,7 @@ export default class StepLogReporter implements Reporter {
 
     // Attached to this attempt in the HTML report, next to its trace.
     result.attachments.push({
-      name: 'step-log.txt',
+      name: 'step-log.log',
       contentType: 'text/plain',
       body: Buffer.from(`${attempt.lines.join('\n')}\n`),
     })
@@ -183,20 +194,29 @@ export default class StepLogReporter implements Reporter {
 
   onEnd(result: FullResult) {
     if (process.argv.includes('--list')) return
-    const count = { expected: 0, unexpected: 0, flaky: 0, skipped: 0 }
+    this.flush()
+    const count = { passed: 0, failed: 0, flaky: 0, skipped: 0, expectedToFail: 0 }
     const failures: Failure[] = []
     for (const failure of this.lastAttempt.values()) {
       const outcome = failure.test.outcome()
-      count[outcome]++
       if (outcome === 'unexpected') failures.push(failure)
+      if (outcome === 'unexpected') count.failed++
+      else if (outcome === 'flaky') count.flaky++
+      else if (outcome === 'skipped') count.skipped++
+      // test.fail(): the test failed, as it was expected to.
+      else if (failure.test.expectedStatus !== 'passed') count.expectedToFail++
+      else count.passed++
     }
+    // Tests that never started, e.g. after --max-failures stopped the run.
+    const notRun = this.total - this.lastAttempt.size
     if (failures.length)
       this.print(`\n${paint('red', paint('bold', `Failures (${failures.length}):`))}`)
     failures.forEach((failure, index) => this.print(this.failureReport(index + 1, failure)))
     const passed = result.status === 'passed'
     const summary =
       `${passed ? '✓' : '✗'} Run ${result.status.toUpperCase()} in ${Math.round(result.duration)} ms: ` +
-      `${count.expected} passed, ${count.unexpected} failed, ${count.flaky} flaky, ${count.skipped} skipped`
+      `${count.passed} passed, ${count.failed} failed, ${count.flaky} flaky, ${count.skipped} skipped, ` +
+      `${count.expectedToFail} expected to fail, ${notRun} not run`
     this.print(`\n${paint(passed ? 'green' : 'red', paint('bold', summary))}`)
   }
 
@@ -213,7 +233,7 @@ export default class StepLogReporter implements Reporter {
         ? `   Failed step: ${paint('red', mask(`${step.id} ${step.kind} ${step.text}`))}`
         : undefined,
       step ? `   Step path:   ${mask(step.path)}` : undefined,
-      `   Log:         grep ${attemptId(attempt.number)} in the terminal, or step-log.txt in the HTML report`,
+      `   Log:         grep ${attemptId(attempt.number)} in the terminal, or step-log.log in the HTML report`,
       trace ? `   Trace:       pnpm exec playwright show-trace ${this.relative(trace)}` : undefined,
       '   Error:',
       ...message.split('\n').map(line => `     ${paint('red', line)}`),
@@ -313,12 +333,36 @@ export default class StepLogReporter implements Reporter {
     if (toTerminal) this.print(useColor ? line.colored : line.plain)
   }
 
-  // console.log from tests and the app: kept, tagged with the attempt it belongs to.
+  // console.log from tests and the app: kept, every line tagged with the attempt it belongs to.
   private passThrough(stream: NodeJS.WriteStream, chunk: string | Buffer, result?: TestResult) {
     const attempt = result && this.running.get(result)
+    const key = `${stream === process.stderr ? 'err' : 'out'} ${attempt?.number ?? ''}`
+    const buffer = this.pending.get(key) ?? { decoder: new StringDecoder('utf8'), text: '' }
+    this.pending.set(key, buffer)
+    // The decoder keeps a UTF-8 character split between two Buffer chunks.
+    buffer.text += typeof chunk === 'string' ? chunk : buffer.decoder.write(chunk)
+    const end =
+      buffer.text.length > MAX_PENDING ? buffer.text.length : buffer.text.lastIndexOf('\n') + 1
+    if (!end) return
+    this.emit(stream, attempt, buffer.text.slice(0, end))
+    buffer.text = buffer.text.slice(end)
+  }
+
+  // Prints what is left of an attempt's output (or of all output) without a final newline.
+  private flush(attempt?: Attempt) {
+    for (const [key, buffer] of this.pending) {
+      if (attempt && key.split(' ')[1] !== String(attempt.number)) continue
+      const text = buffer.text + buffer.decoder.end()
+      const stream = key.startsWith('err') ? process.stderr : process.stdout
+      if (text) this.emit(stream, attempt, `${text}\n`)
+      this.pending.delete(key)
+    }
+  }
+
+  private emit(stream: NodeJS.WriteStream, attempt: Attempt | undefined, text: string) {
     const prefix = attempt ? `${attemptId(attempt.number)} ` : ''
-    const text = mask(prefix + chunk.toString())
-    stream.write(useColor ? text : plain(text))
+    const masked = mask(text.replace(/^(?=.)/gm, prefix))
+    stream.write(useColor ? masked : plain(masked))
   }
 
   // Callers pass text that is already masked: masking after painting could cut an ANSI code.
