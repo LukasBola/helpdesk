@@ -61,11 +61,11 @@ describe('ollama provider', () => {
 
   it('maps content and usage', async () => {
     const result = await make(okFetch(fixture('chat-ok.json'))).generate(request)
-    expect(result.data).toEqual({ priority: 'URGENT', customerLanguage: 'de' })
-    expect(result.inputTokens).toBe(812)
-    expect(result.outputTokens).toBe(143)
-    expect(result.latencyMs).toBe(2500)
-    expect(result.raw).toBe('{"priority": "URGENT", "customerLanguage": "de"}')
+    expect(result.data).toEqual({ priority: 'URGENT', customerLanguage: 'pl' })
+    expect(result.inputTokens).toBe(300)
+    expect(result.outputTokens).toBe(123)
+    expect(result.latencyMs).toBe(11015)
+    expect(result.raw).toBe(JSON.parse(fixture('chat-ok.json')).message.content)
   })
 
   it('defaults missing counters to 0', async () => {

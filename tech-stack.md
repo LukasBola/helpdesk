@@ -49,10 +49,12 @@ Monorepo with two separate apps:
 
 ## AI
 
-- **Anthropic Claude API** — ticket classification, priorities, summaries, suggested replies
-- Direct SDK calls (no LangChain)
+- **Ollama** (default) with `qwen3.8:27b-q4_K_M` — ticket classification, priorities, summaries, suggested replies; runs locally ([ADR-0017](docs/adr/0017-dostawca-ai-ollama-domyslnie.md))
+- **Anthropic Claude API** — later option behind the same provider interface (not implemented yet)
+- Direct HTTP/SDK calls (no LangChain)
 - AI suggests replies, agent always approves before sending
-- Structured output via tool use — Zod validates Claude response before saving
+- Structured output via Ollama `format` (JSON Schema) — Zod validates the response before saving
+- Recorded responses live in `__fixtures__/ollama/`
 
 ## Testing
 
@@ -76,7 +78,7 @@ Limited to critical user flows only: agent logs in, opens a ticket, reviews AI-s
 LLMs are non-deterministic, so standard unit tests are not enough. The eval suite runs ~50-200 hand-verified ticket samples through Claude and checks output _properties_, not exact text — e.g. "classification is one of the valid enum values", "summary does not hallucinate a price", "reply tone is polite". Detects prompt regressions when the model is updated or prompts are changed. Runs nightly to keep CI fast.
 
 **AI cached replay (fixtures)**
-Real Claude responses are recorded to `__fixtures__/claude/*.json`. Unit and integration tests replay these fixtures instead of calling the real API — zero cost, deterministic, fast. Fixtures are updated manually when prompts change intentionally.
+Real model responses are recorded to `__fixtures__/ollama/*.json`. Unit and integration tests replay these fixtures instead of calling the real API — zero cost, deterministic, fast. Fixtures are updated manually when prompts change intentionally.
 
 **Guardrail tests**
 Adversarial inputs run through the full AI pipeline before going to production: prompt injection hidden in email body, PII leakage across tickets, jailbreak attempts. Must pass before any production deployment.

@@ -20,7 +20,7 @@ A full-stack support ticket management system that uses AI to automatically clas
 | Frontend | React, Vite, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query     |
 | Backend  | Express.js, TypeScript, Prisma, PostgreSQL, pgvector, pg-boss        |
 | Auth     | Better Auth (email + password, sessions in Postgres via Prisma)      |
-| AI       | Anthropic Claude API (direct SDK, structured output via Zod)         |
+| AI       | Ollama (local model, structured output via Zod); Claude planned      |
 | Email    | Postmark (inbound), Resend (outbound)                                |
 | Testing  | Vitest, React Testing Library, testcontainers, Playwright, promptfoo |
 | DevOps   | Docker, GitHub Actions, Railway                                      |
@@ -205,6 +205,47 @@ docker compose down
 - **Login fails with the default credentials**: the seed has not run. Run step 6.
 - **`Environment variable not found`**: `.env` is missing or not in the repository root. Repeat step 3.
 
+### AI (Ollama)
+
+AI runs on a local model through [Ollama](https://ollama.com). No API key is needed, and the email text never leaves your machine. Without Ollama the app still works: tickets are created, and the AI panel shows "AI unavailable".
+
+1. Install and start Ollama:
+
+   ```bash
+   brew install ollama
+   brew services start ollama
+   ```
+
+2. Pull the model (about 17 GB):
+
+   ```bash
+   ollama pull qwen3.8:27b-q4_K_M
+   ```
+
+   For development on a weaker machine, a small model is enough (lower quality). Pull it and set `OLLAMA_MODEL=qwen3:8b` in `.env`:
+
+   ```bash
+   ollama pull qwen3:8b
+   ```
+
+3. Check that it answers (the first call loads the model, about 10 seconds):
+
+   ```bash
+   pnpm --filter server ai:try
+   ```
+
+   The script runs the real model on three sample tickets (`server/src/__fixtures__/ai-samples/`) and prints the results and timings. It does not write to the database. A summary and a draft with translations take 20-50 seconds per ticket. With `--record` it also saves the raw analysis response as the test fixture `server/src/__fixtures__/ollama/chat-ok.json`.
+
+> Use the `qwen3.8:27b-q4_K_M` (GGUF) tag. The MLX variants and the bare `qwen3.8:27b` tag (`nvfp4`) do not support forced JSON output: Ollama answers `structured output is unavailable`, and AI fails for every ticket.
+
+`AI_PROVIDER` values:
+
+- `ollama` (default): the local model described above.
+- `fake`: fixed answers without any model, used for tests.
+- `claude`: not implemented yet. The server starts normally, but every AI call fails with `Claude provider not implemented`, so tickets show "AI unavailable".
+
+The variables are listed in [Environment variables](#environment-variables). The decision is described in [ADR-0017](docs/adr/0017-dostawca-ai-ollama-domyslnie.md).
+
 ### Environment variables
 
 | Variable                 | Required           | Description                                                                                    |
@@ -217,6 +258,10 @@ docker compose down
 | `POSTMARK_WEBHOOK_TOKEN` | For inbound email  | Postmark webhook validation token                                                              |
 | `RESEND_API_KEY`         | For outbound email | Resend API key for sending replies                                                             |
 | `PORT`                   | No                 | Backend port, defaults to `3000`                                                               |
+| `AI_PROVIDER`            | No                 | `ollama` (default), `claude` or `fake`; see [AI (Ollama)](#ai-ollama)                          |
+| `OLLAMA_HOST`            | No                 | Ollama address, defaults to `http://localhost:11434`                                           |
+| `OLLAMA_MODEL`           | No                 | Model name, defaults to `qwen3.8:27b-q4_K_M`                                                   |
+| `AI_TIMEOUT_MS`          | No                 | Timeout of one AI call in milliseconds, defaults to `120000`                                   |
 
 ## Testing
 
