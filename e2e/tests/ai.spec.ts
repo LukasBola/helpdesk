@@ -86,6 +86,11 @@ test.describe('Panel AI w tickecie', () => {
       'Średni',
     )
 
+    // The thread (message and history) renders after the panel: count only once it is there.
+    await expect(
+      tickets.thread.getByText(`Treść zgłoszenia: ${subject}`),
+      'Wątek ticketu jest załadowany (treść zgłoszenia)',
+    ).toBeVisible()
     const entry = tickets.thread.getByText(`${USERS.ai.name} · Priorytet: Średni → Pilny`)
     const before = await entry.count()
 
