@@ -54,6 +54,13 @@ export const USERS = {
     name: 'Konrad Konto',
     firstName: 'Konrad',
   },
+  // Used only by the language test (switches the account language).
+  locale: {
+    email: 'e2e-locale@helpdesk.local',
+    password: PASSWORD,
+    name: 'Lucyna Język',
+    firstName: 'Lucyna',
+  },
   // Blocked by the seed and never unblocked.
   locked: {
     email: 'e2e-locked@helpdesk.local',

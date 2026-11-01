@@ -20,6 +20,7 @@ const USERS = [
   { email: 'e2e-escalate@helpdesk.local', name: 'Ela Eskalacja', role: 'AGENT' as const },
   { email: 'e2e-selfunblock@helpdesk.local', name: 'Sara Samoodblok', role: 'AGENT' as const },
   { email: 'e2e-account@helpdesk.local', name: 'Konrad Konto', role: 'AGENT' as const },
+  { email: 'e2e-locale@helpdesk.local', name: 'Lucyna Język', role: 'AGENT' as const },
 ]
 // Blocked for good at every seed.
 const LOCKED = 'e2e-locked@helpdesk.local'
@@ -33,6 +34,9 @@ const TICKETS: { key: string; subject: string; status: TicketStatus; priority: T
     { key: 'patch-status', subject: 'E2E Do zmiany statusu', status: 'OPEN', priority: 'MEDIUM' },
     { key: 'patch-assign', subject: 'E2E Do przypisania', status: 'OPEN', priority: 'MEDIUM' },
     { key: 'patch-invalid', subject: 'E2E Błędne dane', status: 'OPEN', priority: 'MEDIUM' },
+    { key: 'api-reply', subject: 'E2E API odpowiedź', status: 'OPEN', priority: 'MEDIUM' },
+    { key: 'ui-reply', subject: 'E2E Do odpowiedzi', status: 'OPEN', priority: 'MEDIUM' },
+    { key: 'ui-assign', subject: 'E2E Do przypisania w UI', status: 'OPEN', priority: 'LOW' },
   ]
 
 async function seed() {

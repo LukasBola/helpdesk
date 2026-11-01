@@ -357,3 +357,35 @@ test.describe('API: zablokowany użytkownik z aktywną sesją', () => {
     expect((await ctx.patch('/api/tickets/any', { data: {} })).status()).toBe(401)
   })
 })
+
+test.describe('API: odpowiedzi i filtr przypisania', () => {
+  test('T14 POST /replies dodaje odpowiedź (201) i przestawia status na IN_PROGRESS', async () => {
+    const id = await findTicketId(agent, TICKETS.apiReply.subject)
+    const res = await agent.post(`/api/tickets/${id}/replies`, { data: { body: 'Odpowiedź API' } })
+    expect(res.status()).toBe(201)
+    const ticket = await detail(id)
+    expect(ticket.status).toBe('IN_PROGRESS')
+    // A retry may find the reply from the first attempt, so only check that it exists.
+    expect(ticket.replies.length).toBeGreaterThanOrEqual(1)
+  })
+
+  test('T14 pusta odpowiedź: 422', async () => {
+    const id = await findTicketId(agent, TICKETS.apiReply.subject)
+    const res = await agent.post(`/api/tickets/${id}/replies`, { data: { body: '   ' } })
+    expect(res.status()).toBe(422)
+  })
+
+  test('T14 bez sesji POST /replies zwraca 401', async () => {
+    const anon = await newApiContext()
+    const id = await findTicketId(agent, TICKETS.apiReply.subject)
+    expect((await anon.post(`/api/tickets/${id}/replies`, { data: { body: 'x' } })).status()).toBe(
+      401,
+    )
+  })
+
+  test('T15 assigneeId=none zwraca tylko nieprzypisane', async () => {
+    const { tickets, total } = await list({ assigneeId: 'none', search: E2E_SEARCH, limit: 50 })
+    expect(total).toBeGreaterThan(0)
+    for (const t of tickets) expect(t.assigneeId).toBeNull()
+  })
+})

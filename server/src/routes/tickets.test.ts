@@ -8,6 +8,10 @@ import { signIn } from '../test/auth'
 
 let cookie: string
 let ticketId: string
+let openId: string
+let openId2: string
+let resolvedId: string
+let formId: string
 
 beforeAll(async () => {
   await createCredentialUser({
@@ -27,11 +31,29 @@ beforeAll(async () => {
     },
   })
   ticketId = ticket.id
+
+  const mk = (n: string, status: 'OPEN' | 'RESOLVED') =>
+    prisma.ticket.create({
+      data: {
+        messageId: `route-reply-${n}@test.com`,
+        customerEmail: 'c@test.com',
+        customerName: 'C',
+        subject: `Reply ${n}`,
+        body: 'body',
+        status,
+      },
+    })
+  openId = (await mk('open', 'OPEN')).id
+  openId2 = (await mk('open2', 'OPEN')).id
+  resolvedId = (await mk('resolved', 'RESOLVED')).id
+  formId = (await mk('form', 'OPEN')).id
 })
 
 afterAll(async () => {
-  await prisma.ticketHistory.deleteMany({ where: { ticketId } })
-  await prisma.ticket.deleteMany({ where: { id: ticketId } })
+  const ids = [ticketId, openId, openId2, resolvedId, formId]
+  await prisma.reply.deleteMany({ where: { ticketId: { in: ids } } })
+  await prisma.ticketHistory.deleteMany({ where: { ticketId: { in: ids } } })
+  await prisma.ticket.deleteMany({ where: { id: { in: ids } } })
   await prisma.user.deleteMany({ where: { email: 'agent-ticket@test.com' } })
 })
 
@@ -162,5 +184,68 @@ describe('GET /api/tickets edge cases', () => {
     const res = await request(app).get('/api/tickets').query({ search: ch }).set('Cookie', cookie)
     expect(res.status).toBe(200)
     expect(res.body.total).toBe(0)
+  })
+})
+
+describe('POST /api/tickets/:id/replies', () => {
+  const post = (id: string, body: unknown) =>
+    request(app).post(`/api/tickets/${id}/replies`).set('Cookie', cookie).send({ body })
+
+  it('saves the reply and moves an OPEN ticket to IN_PROGRESS with a history entry', async () => {
+    const res = await request(app)
+      .post(`/api/tickets/${openId}/replies`)
+      .set('Cookie', cookie)
+      .send({ body: '  Dzień dobry  ' })
+    expect(res.status).toBe(201)
+    expect(res.body).toMatchObject({ body: 'Dzień dobry', resendId: null, user: { name: 'Agent' } })
+    const ticket = await prisma.ticket.findUniqueOrThrow({
+      where: { id: openId },
+      include: { history: true },
+    })
+    expect(ticket.status).toBe('IN_PROGRESS')
+    expect(ticket.history).toContainEqual(
+      expect.objectContaining({ field: 'status', oldValue: 'OPEN', newValue: 'IN_PROGRESS' }),
+    )
+  })
+
+  it('does not change a status other than OPEN', async () => {
+    const res = await post(resolvedId, 'Hello')
+    expect(res.status).toBe(201)
+    const ticket = await prisma.ticket.findUniqueOrThrow({
+      where: { id: resolvedId },
+      include: { history: true },
+    })
+    expect(ticket.status).toBe('RESOLVED')
+    expect(ticket.history).toHaveLength(0)
+  })
+
+  it('two concurrent replies to an OPEN ticket create two replies but one status history row', async () => {
+    await Promise.all([post(openId2, 'A'), post(openId2, 'B')])
+    expect(await prisma.reply.count({ where: { ticketId: openId2 } })).toBe(2)
+    expect(
+      await prisma.ticketHistory.count({ where: { ticketId: openId2, field: 'status' } }),
+    ).toBe(1)
+  })
+
+  it.each([
+    ['empty', ''],
+    ['whitespace-only', '   '],
+    ['too long', 'x'.repeat(10_001)],
+    ['missing', undefined],
+  ])('rejects a %s body with 422', async (_label, body) => {
+    const res = await post(formId, body)
+    expect(res.status).toBe(422)
+    expect(await prisma.reply.count({ where: { ticketId: formId } })).toBe(0)
+  })
+
+  it('returns 404 for an unknown ticket', async () => {
+    const res = await post('cnonexistent000000000000', 'Hi')
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 401 without a session', async () => {
+    const res = await request(app).post(`/api/tickets/${formId}/replies`).send({ body: 'Hi' })
+    expect(res.status).toBe(401)
+    expect(await prisma.reply.count({ where: { ticketId: formId } })).toBe(0)
   })
 })

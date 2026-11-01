@@ -27,8 +27,10 @@ pnpm-debug.log*
 # Testing
 coverage/
 playwright-report/
+playwright-report-api/
 playwright/.cache/
 test-results/
+test-results-api/
 .vitest-cache/
 
 # AI fixtures (optional — uncomment if you don't want to commit them)

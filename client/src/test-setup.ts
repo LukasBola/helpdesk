@@ -1,5 +1,15 @@
 import '@testing-library/jest-dom/vitest'
 
+import { beforeEach } from 'vitest'
+
+import i18n from '@/i18n'
+
+// jsdom reports en-US; pin Polish so tests assert the default UI language.
+beforeEach(async () => {
+  localStorage.clear()
+  await i18n.changeLanguage('pl')
+})
+
 const noop = (): void => undefined
 
 // jsdom lacks a few browser APIs that Radix (Sheet, DropdownMenu) relies on.

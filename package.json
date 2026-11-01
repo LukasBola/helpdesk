@@ -14,10 +14,12 @@
     "format:check": "prettier --check .",
     "typecheck": "pnpm --filter server typecheck && pnpm --filter client typecheck && tsc -p e2e/tsconfig.json",
     "prepare": "husky",
-    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "e2e": "playwright test -c e2e/playwright.config.ts && playwright test -c e2e/playwright.api.config.ts",
+    "e2e:api": "playwright test -c e2e/playwright.api.config.ts",
     "e2e:headed": "E2E_SLOWMO=400 playwright test -c e2e/playwright.config.ts --headed --workers=1",
     "e2e:ui": "playwright test -c e2e/playwright.config.ts --ui",
     "e2e:report": "playwright show-report e2e/playwright-report",
+    "e2e:report:api": "playwright show-report e2e/playwright-report-api",
     "e2e:install": "playwright install chromium firefox webkit"
   },
   "license": "ISC",
