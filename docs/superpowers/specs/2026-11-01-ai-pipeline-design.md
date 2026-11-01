@@ -48,7 +48,7 @@ Stary `plans/07-ai-pipeline.md` (tylko Claude, tool use) to wyłącznie materia�
   - fixtures w `server/src/__fixtures__/`;
   - Playwright e2e w `e2e/` (UI i API).
 - **Zod w serwerze w wersji 3** (`^3.24.1`).
-- **Ollama 0.32.15** działa lokalnie, a model `qwen3.8:27b-mlx` jest w trakcie pobierania (tag istnieje w rejestrze). `express-rate-limit` nie jest zainstalowany.
+- **Ollama 0.40.13** działa lokalnie z modelem `qwen3.8:27b-q4_K_M` (GGUF). `express-rate-limit` nie jest zainstalowany.
 
 ## Cele
 
@@ -146,7 +146,7 @@ Prompt musi to wymuszać. To główne ryzyko jakości.
 - `AI_PROVIDER`: `ollama` (domyślnie) | `claude` | `fake` (testy integracyjne, deterministyczne odpowiedzi).
   - `claude` to tylko szkielet. Serwer startuje normalnie, a każde liczenie kończy się błędem „not implemented”, więc ticket dostaje stan „nieudane” (moja decyzja; AI nie może blokować przyjmowania maili).
 - `OLLAMA_HOST`: domyślnie `http://localhost:11434`.
-- `OLLAMA_MODEL`: domyślnie `qwen3.8:27b-mlx`. Zapasowo `qwen3.8:27b`, a do szybkiego dev mniejszy model, np. `qwen3:8b`.
+- `OLLAMA_MODEL`: domyślnie `qwen3.8:27b-q4_K_M` (GGUF). Do szybkiego dev mniejszy model, np. `qwen3:8b`. Warianty `qwen3.8:27b-mlx` i `qwen3.8:27b` (kwantyzacja `nvfp4`) odpadły, bo Ollama 0.40.13 zwraca dla nich `structured output is unavailable` (sprawdzone 2026-11-01). Wymuszony schemat JSON jest ważniejszy niż szybkość MLX (decyzja użytkownika).
 - `AI_TIMEOUT_MS`: limit czasu jednego wywołania. Domyślnie hojny (np. 120 s), bo zimny start modelu 27B trwa długo.
 
 Nazwy i wartości domyślne są moją decyzją. README opisuje instalację Ollamy, pobranie modelu i te zmienne.
@@ -154,6 +154,7 @@ Nazwy i wartości domyślne są moją decyzją. README opisuje instalację Ollam
 ## Fakty o Ollamie (rozpoznanie, dokumentacja `/ollama/ollama`)
 
 - **Strukturalne wyjście:** `/api/chat` z `stream: false` i `format` jako obiektem JSON Schema. Wynik przychodzi jako string JSON w `message.content`, więc trzeba go sparsować i zwalidować Zodem. Zalecane `options.temperature: 0` (dla klasyfikacji; szkic może mieć wyższą temperaturę, to do ustalenia przez buildera).
+- **Pomiar (2026-11-01, `qwen3.8:27b-q4_K_M`, M3 Max):** klasyfikacja 12 s na zimno (10 s wczytywania), 1,3 s na ciepło; szkic z dwoma tłumaczeniami 23,6 s, `done_reason: stop`, JSON zgodny ze schematem.
 - **Rozumowanie:** `think: false` dla JSON-a. Rozumowanie qwen3 nie miesza się wtedy z odpowiedzią i oszczędza tokeny.
 - **Metryki:**
   - `prompt_eval_count` mapuje się na `inputTokens`, `eval_count` na `outputTokens`;
