@@ -38,8 +38,8 @@ export default defineConfig({
     locale: 'pl-PL',
     // Playwright recommends on-first-retry in CI (https://playwright.dev/docs/trace-viewer);
     // locally there are no retries, so keep the trace of every failed test instead.
-    trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
-    screenshot: 'only-on-failure',
+    trace: 'on',
+    screenshot: 'on',
     video: 'retain-on-failure',
     launchOptions: { slowMo: Number(process.env.E2E_SLOWMO ?? 0) },
   },
