@@ -36,14 +36,14 @@ Wyjście strukturalne daje parametr `format` (JSON Schema) Ollamy. Każdą odpow
 
 **Negatywne / koszty**
 
-- Każdy deweloper musi zainstalować Ollamę i pobrać model (około 18 GB, potrzeba dużo RAM).
+- Każdy deweloper musi zainstalować Ollamę i pobrać model (około 17 GB, potrzeba dużo RAM).
 - Model 27B odpowiada wolniej niż API w chmurze, a pierwsze wywołanie trwa dłużej, bo model musi się wczytać. Dlatego liczenie działa w tle, a nie na kliknięcie [wniosek].
-- Opisy Claude w `tech-stack.md` (tool use, `__fixtures__/claude/`) są nieaktualne dla domyślnej ścieżki.
+- Pierwotny opis Claude w `tech-stack.md` (tool use, `__fixtures__/claude/`) trzeba było zmienić. Sekcja AI opisuje teraz Ollamę jako domyślną.
 
 **Niewiadome**
 
 - Źródło AI na produkcji: zdalna Ollama albo Claude. Rozstrzygnie osobny plan wdrożenia.
-- Czy jakość szkiców z lokalnego modelu wystarczy. Sprawdzimy to ręcznie, a potem ewaluacjami promptfoo w Planie 12.
+- Czy jakość szkiców wystarczy na większej liczbie maili. Ręcznie sprawdziliśmy 3 przykłady (PL, EN, DE) i użytkownik je zaakceptował 2026-11-01. Pełną ocenę dadzą ewaluacje promptfoo w Planie 12.
 
 ## Dowody
 
@@ -52,3 +52,5 @@ Wyjście strukturalne daje parametr `format` (JSON Schema) Ollamy. Każdą odpow
 - `plans/07-ai-pipeline.md` – pierwotny plan tylko z Claude
 - Test ręczny 2026-11-01 (Ollama 0.40.13): `format` działa dla `qwen3.8:27b-q4_K_M`, dla wariantów MLX i `nvfp4` zwraca błąd
 - `server/prisma/schema.prisma` – model `AIInteraction` z `costUsd`
+- `pnpm --filter server ai:try` z 2026-11-01: 3 próbki (PL, EN, DE), szkice bez obietnic, z poprawnie rozpoznanym językiem klienta
+- ADR-0018 – jak i kiedy AI jest wywoływane (w tle, przez pg-boss)

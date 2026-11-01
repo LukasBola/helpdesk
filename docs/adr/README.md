@@ -6,24 +6,25 @@ Każdy plik opisuje jedną decyzję architektoniczną: kontekst, decyzję, konse
 
 Nowy ADR: skopiuj [`0000-template.md`](0000-template.md), nadaj kolejny numer. Zmiana decyzji to nowy ADR; stary dostaje status „Zastąpiony przez”.
 
-| ADR                                                 | Decyzja                                         | Status                |
-| --------------------------------------------------- | ----------------------------------------------- | --------------------- |
-| [0001](0001-monorepo-pnpm-client-server.md)         | Monorepo pnpm, `client` + `server`, TypeScript  | Zaakceptowany         |
-| [0002](0002-postgresql-prisma-pgvector.md)          | PostgreSQL 16 + pgvector, Prisma                | Zaakceptowany         |
-| [0003](0003-pg-boss-kolejka-zadan.md)               | Kolejka zadań pg-boss w Postgresie              | Zaakceptowany         |
-| [0004](0004-postmark-inbound-idempotencja.md)       | Webhook Postmark, idempotencja po `Message-ID`  | Zaakceptowany         |
-| [0005](0005-sesje-express-session.md)               | Sesje express-session + connect-pg-simple       | Zastąpiony przez 0006 |
-| [0006](0006-better-auth.md)                         | Better Auth                                     | Zaakceptowany         |
-| [0007](0007-jeden-origin-spa-api.md)                | SPA i API pod jednym originem                   | Zaakceptowany         |
-| [0008](0008-ochrona-csrf-origin.md)                 | Ochrona CSRF przez sprawdzanie `Origin`         | Zaakceptowany         |
-| [0009](0009-walidacja-env-zod.md)                   | Walidacja env przez Zod przy starcie            | Zaakceptowany         |
-| [0010](0010-testy-integracyjne-testcontainers.md)   | Testy integracyjne z testcontainers             | Zaakceptowany         |
-| [0011](0011-e2e-playwright.md)                      | E2E Playwright: Chromium, API przez proxy       | Zaakceptowany         |
-| [0012](0012-jakosc-kodu-hooki-ci.md)                | Prettier, ESLint, typecheck w hookach i CI      | Zaakceptowany         |
-| [0013](0013-node-22.md)                             | Node.js 22                                      | Zaakceptowany         |
-| [0014](0014-frontend-spa-react-vite.md)             | SPA: React, Vite, TanStack Query, Tailwind      | Zaakceptowany         |
-| [0015](0015-i18n-react-i18next-locale-na-koncie.md) | Interfejs PL/EN, react-i18next, język na koncie | Zaakceptowany         |
-| [0016](0016-logowanie-e2e-reporter-playwright.md)   | Logowanie e2e przez reporter, bez wrapperów     | Zaakceptowany         |
-| [0017](0017-dostawca-ai-ollama-domyslnie.md)        | Dostawca AI: lokalna Ollama domyślnie           | Zaakceptowany         |
+| ADR                                                 | Decyzja                                           | Status                |
+| --------------------------------------------------- | ------------------------------------------------- | --------------------- |
+| [0001](0001-monorepo-pnpm-client-server.md)         | Monorepo pnpm, `client` + `server`, TypeScript    | Zaakceptowany         |
+| [0002](0002-postgresql-prisma-pgvector.md)          | PostgreSQL 16 + pgvector, Prisma                  | Zaakceptowany         |
+| [0003](0003-pg-boss-kolejka-zadan.md)               | Kolejka zadań pg-boss w Postgresie                | Zaakceptowany         |
+| [0004](0004-postmark-inbound-idempotencja.md)       | Webhook Postmark, idempotencja po `Message-ID`    | Zaakceptowany         |
+| [0005](0005-sesje-express-session.md)               | Sesje express-session + connect-pg-simple         | Zastąpiony przez 0006 |
+| [0006](0006-better-auth.md)                         | Better Auth                                       | Zaakceptowany         |
+| [0007](0007-jeden-origin-spa-api.md)                | SPA i API pod jednym originem                     | Zaakceptowany         |
+| [0008](0008-ochrona-csrf-origin.md)                 | Ochrona CSRF przez sprawdzanie `Origin`           | Zaakceptowany         |
+| [0009](0009-walidacja-env-zod.md)                   | Walidacja env przez Zod przy starcie              | Zaakceptowany         |
+| [0010](0010-testy-integracyjne-testcontainers.md)   | Testy integracyjne z testcontainers               | Zaakceptowany         |
+| [0011](0011-e2e-playwright.md)                      | E2E Playwright: Chromium, API przez proxy         | Zaakceptowany         |
+| [0012](0012-jakosc-kodu-hooki-ci.md)                | Prettier, ESLint, typecheck w hookach i CI        | Zaakceptowany         |
+| [0013](0013-node-22.md)                             | Node.js 22                                        | Zaakceptowany         |
+| [0014](0014-frontend-spa-react-vite.md)             | SPA: React, Vite, TanStack Query, Tailwind        | Zaakceptowany         |
+| [0015](0015-i18n-react-i18next-locale-na-koncie.md) | Interfejs PL/EN, react-i18next, język na koncie   | Zaakceptowany         |
+| [0016](0016-logowanie-e2e-reporter-playwright.md)   | Logowanie e2e przez reporter, bez wrapperów       | Zaakceptowany         |
+| [0017](0017-dostawca-ai-ollama-domyslnie.md)        | Dostawca AI: lokalna Ollama domyślnie             | Zaakceptowany         |
+| [0018](0018-ai-w-tle-pg-boss-wyniki-w-tabeli.md)    | AI w tle przez pg-boss, wyniki w tabeli ze stanem | Zaakceptowany         |
 
-Decyzje tylko zaplanowane w `tech-stack.md` (Resend, Railway, promptfoo, express-rate-limit) nie mają ADR-ów, bo nie zostały jeszcze wdrożone. Claude API jako dostawca opcjonalny jest opisany w ADR-0017.
+Decyzje tylko zaplanowane w `tech-stack.md` (Resend, Railway, promptfoo) nie mają ADR-ów, bo nie zostały jeszcze wdrożone. Claude API jako dostawca opcjonalny jest opisany w ADR-0017. `express-rate-limit` chroni tylko ponowne liczenie AI (ADR-0018); to łatwo odwracalny wybór biblioteki, więc nie ma osobnego ADR-a.
