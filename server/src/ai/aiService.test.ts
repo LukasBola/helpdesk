@@ -1,6 +1,7 @@
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 
 import { prisma } from '../db'
+import { logger } from '../lib/logger'
 import { type InteractionEntry, runTriage, triageTicket } from './aiService'
 import { createFakeProvider } from './fakeProvider'
 import { AiInvalidOutputError, AiUnavailableError } from './types'
@@ -60,8 +61,14 @@ describe('runTriage', () => {
       model: 'fake',
       generate: () => Promise.reject(new AiUnavailableError('down')),
     }
-    const log = () => Promise.reject(new Error('db down'))
-    await expect(runTriage(input, provider, log)).rejects.toThrow('down')
+    const log = () => Promise.reject(new Error('log failed'))
+    const spy = vi.spyOn(logger, 'error').mockImplementation(() => undefined)
+    try {
+      await expect(runTriage(input, provider, log)).rejects.toBeInstanceOf(AiUnavailableError)
+      expect(spy).toHaveBeenCalledTimes(1)
+    } finally {
+      spy.mockRestore()
+    }
   })
 
   it('logs analysis success then draft failure exactly once each', async () => {
@@ -160,7 +167,17 @@ describe('triageTicket', () => {
       data: { email: `ai-svc-${Date.now()}@example.com`, name: 'AI Svc', role: 'ADMIN' },
     })
     userIds.push(user.id)
-    const out = await triageTicket(t.id, { provider: respondWith('de'), userId: user.id })
+    const base = respondWith('de')
+    const provider = {
+      ...base,
+      generate: async <T>(req: Parameters<typeof base.generate<T>>[0]) => ({
+        ...(await base.generate(req)),
+        inputTokens: 11,
+        outputTokens: 22,
+        latencyMs: 33,
+      }),
+    }
+    const out = await triageTicket(t.id, { provider, userId: user.id })
     expect(out.customerLanguage).toBe('de')
     const rows = await prisma.aIInteraction.findMany({
       where: { ticketId: t.id },
@@ -174,6 +191,9 @@ describe('triageTicket', () => {
         model: 'fake',
         userId: user.id,
         costUsd: 0,
+        inputTokens: 11,
+        outputTokens: 22,
+        latencyMs: 33,
       })
       expect(r.prompt.length).toBeGreaterThan(0)
     }
