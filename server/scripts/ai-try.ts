@@ -16,11 +16,17 @@ import type { TicketInput } from '../src/ai/prompts'
 const SAMPLES = ['pl-printer', 'en-invoice', 'de-return']
 const record = process.argv.includes('--record')
 
+// Defaults mirror server/src/env.ts (it cannot be imported here: it requires DATABASE_URL).
 const host = process.env.OLLAMA_HOST ?? 'http://localhost:11434'
 const model = process.env.OLLAMA_MODEL ?? 'qwen3.8:27b-q4_K_M'
 const timeoutMs = Number(process.env.AI_TIMEOUT_MS ?? 120000)
+if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+  console.error('AI_TIMEOUT_MS must be a positive number of milliseconds')
+  process.exit(1)
+}
 
 let recordNext = false
+let pendingRecord: string | null = null
 let recorded: string | null = null
 
 // Capture the raw response of the first (analysis) call of pl-printer when recording.
@@ -28,7 +34,7 @@ const recordingFetch: typeof fetch = async (input, init) => {
   const res = await fetch(input, init)
   if (recordNext) {
     recordNext = false
-    recorded = JSON.stringify(await res.clone().json(), null, 2)
+    if (res.ok) pendingRecord = JSON.stringify(await res.clone().json(), null, 2)
   }
   return res
 }
@@ -43,12 +49,14 @@ async function main() {
     ) as TicketInput
     const entries: InteractionEntry[] = []
     recordNext = record && name === 'pl-printer'
+    pendingRecord = null
     const startedAt = Date.now()
     console.log(`=== ${name}: ${input.subject}`)
     try {
       const out = await runTriage(input, provider, async e => {
         entries.push(e)
       })
+      if (record && name === 'pl-printer') recorded = pendingRecord
       console.log(`priority:           ${out.suggestedPriority}`)
       console.log(`customerLanguage:   ${out.customerLanguage}`)
       console.log(`summaryPl:          ${out.summaryPl}`)
@@ -69,7 +77,7 @@ async function main() {
   }
 
   if (record) {
-    if (!recorded) throw new Error('Nothing recorded (analysis call for pl-printer failed)')
+    if (!recorded) throw new Error('Nothing recorded (pl-printer triage failed)')
     writeFileSync(join(__dirname, '../src/__fixtures__/ollama/chat-ok.json'), `${recorded}\n`)
     console.log('Recorded src/__fixtures__/ollama/chat-ok.json')
   }

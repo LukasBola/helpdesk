@@ -115,7 +115,7 @@ Open `.env` in your editor and set the three required variables:
   http://localhost:3000
   ```
 
-The remaining variables (`ANTHROPIC_API_KEY`, `POSTMARK_WEBHOOK_TOKEN`, `RESEND_API_KEY`) are only needed for AI and email features. The app starts without them. See [Environment variables](#environment-variables).
+The remaining variables (`POSTMARK_WEBHOOK_TOKEN`, `RESEND_API_KEY`) are only needed for email features, and AI needs no variables with the defaults (`ANTHROPIC_API_KEY` is reserved for a future Claude provider). The app starts without them. See [Environment variables](#environment-variables).
 
 > `.env` is in `.gitignore` and must never be committed. Never put real secrets or API keys in this README, `.env.example` or any other tracked file.
 
@@ -246,6 +246,54 @@ AI runs on a local model through [Ollama](https://ollama.com). No API key is nee
 
 The variables are listed in [Environment variables](#environment-variables). The decision is described in [ADR-0017](docs/adr/0017-dostawca-ai-ollama-domyslnie.md).
 
+#### Everyday Ollama commands
+
+- Is the service running:
+
+  ```bash
+  brew services list | grep ollama
+  ```
+
+- Which model is loaded in memory, on CPU or GPU, and until when:
+
+  ```bash
+  ollama ps
+  ```
+
+- Free the memory right away (otherwise Ollama unloads the model about 5 minutes after the last call):
+
+  ```bash
+  ollama stop qwen3.8:27b-q4_K_M
+  ```
+
+- Stop or start the service. While it is stopped there is no AI: tickets are still created and the AI panel shows "AI unavailable".
+
+  ```bash
+  brew services stop ollama
+  brew services start ollama
+  ```
+
+- List downloaded models with their size, and remove one:
+
+  ```bash
+  ollama list
+  ollama rm <name>
+  ```
+
+- Update Ollama:
+
+  ```bash
+  brew upgrade ollama && brew services restart ollama
+  ```
+
+- Follow the log:
+
+  ```bash
+  tail -f "$(brew --prefix)/var/log/ollama.log"
+  ```
+
+> While a ticket is being analysed, the Mac works hard (GPU at 100%) for about 30-50 seconds. This is expected.
+
 ### Environment variables
 
 | Variable                 | Required           | Description                                                                                    |
@@ -254,7 +302,7 @@ The variables are listed in [Environment variables](#environment-variables). The
 | `BETTER_AUTH_SECRET`     | Yes                | Min 32 characters, used to sign session cookies                                                |
 | `BETTER_AUTH_URL`        | Yes                | Backend base URL, e.g. `http://localhost:3000`                                                 |
 | `CLIENT_URL`             | Production only    | Frontend origin trusted by Better Auth; defaults to `http://localhost:5173` outside production |
-| `ANTHROPIC_API_KEY`      | For AI features    | Claude API key                                                                                 |
+| `ANTHROPIC_API_KEY`      | No                 | Reserved for `AI_PROVIDER=claude`, which is not implemented yet; currently unused              |
 | `POSTMARK_WEBHOOK_TOKEN` | For inbound email  | Postmark webhook validation token                                                              |
 | `RESEND_API_KEY`         | For outbound email | Resend API key for sending replies                                                             |
 | `PORT`                   | No                 | Backend port, defaults to `3000`                                                               |
