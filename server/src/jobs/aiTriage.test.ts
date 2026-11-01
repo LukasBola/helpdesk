@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createFakeProvider } from '../ai/fakeProvider'
 import { prisma } from '../db'
@@ -75,5 +75,21 @@ describe('requestAiTriage', () => {
     const row = await prisma.ticketAiResult.findUniqueOrThrow({ where: { ticketId } })
     expect(row.state).toBe('PENDING')
     expect(row.draft).toBe('previous draft')
+  })
+
+  it('marks FAILED when enqueue fails and allows a later retry', async () => {
+    await prisma.ticketAiResult.update({
+      where: { ticketId },
+      data: { state: 'READY', error: null },
+    })
+    const boss = await getQueue()
+    const spy = vi.spyOn(boss, 'send').mockRejectedValueOnce(new Error('db down'))
+    await expect(requestAiTriage(ticketId)).rejects.toThrow('db down')
+    spy.mockRestore()
+    const row = await prisma.ticketAiResult.findUniqueOrThrow({ where: { ticketId } })
+    expect(row.state).toBe('FAILED')
+    expect(row.error).toContain('db down')
+    expect(row.draft).toBe('previous draft')
+    expect(await requestAiTriage(ticketId)).toBe('queued')
   })
 })

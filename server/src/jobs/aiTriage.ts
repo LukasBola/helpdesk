@@ -57,10 +57,24 @@ export async function requestAiTriage(
 ): Promise<'queued' | 'already-pending'> {
   if (!(await markPending(ticketId))) return 'already-pending'
 
-  const boss = await getQueue()
-  await ensureAiQueue(boss)
-  const data: AiJobData = { ticketId, ...(userId ? { userId } : {}) }
-  await boss.send(AI_JOB, data, { ...AI_JOB_OPTIONS, singletonKey: ticketId })
+  try {
+    const boss = await getQueue()
+    await ensureAiQueue(boss)
+    const data: AiJobData = { ticketId, ...(userId ? { userId } : {}) }
+    await boss.send(AI_JOB, data, { ...AI_JOB_OPTIONS, singletonKey: ticketId })
+  } catch (err: unknown) {
+    // Don't leave the row stuck in PENDING with no job behind it.
+    const message = `Enqueue failed: ${err instanceof Error ? err.message : String(err)}`
+    await prisma.ticketAiResult
+      .updateMany({
+        where: { ticketId, state: 'PENDING' },
+        data: { state: 'FAILED', error: message.slice(0, MAX_ERROR_CHARS) },
+      })
+      .catch(updateErr =>
+        logger.error({ err: updateErr, ticketId }, 'Failed to mark enqueue failure'),
+      )
+    throw err
+  }
   return 'queued'
 }
 
