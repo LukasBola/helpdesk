@@ -43,6 +43,44 @@ describe('runTriage', () => {
     expect(en.draftTranslationPl).toBe('Cześć')
   })
 
+  it('logs success once and does not double-log when the success log throws', async () => {
+    const entries: InteractionEntry[] = []
+    const log = (e: InteractionEntry) => {
+      entries.push(e)
+      return Promise.reject(new Error('db down'))
+    }
+    await expect(runTriage(input, respondWith('de'), log)).rejects.toThrow('db down')
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({ type: 'CLASSIFICATION', success: true })
+  })
+
+  it('rethrows the provider error when the failure log throws', async () => {
+    const provider = {
+      name: 'fake' as const,
+      model: 'fake',
+      generate: () => Promise.reject(new AiUnavailableError('down')),
+    }
+    const log = () => Promise.reject(new Error('db down'))
+    await expect(runTriage(input, provider, log)).rejects.toThrow('down')
+  })
+
+  it('logs analysis success then draft failure exactly once each', async () => {
+    const entries: InteractionEntry[] = []
+    const provider = createFakeProvider(req => {
+      if (req.kind === 'analysis') {
+        return { priority: 'LOW', customerLanguage: 'en', summaryPl: 'a', summaryEn: 'b' }
+      }
+      return { draft: '' }
+    })
+    await expect(
+      runTriage(input, provider, async e => void entries.push(e)),
+    ).rejects.toBeInstanceOf(AiInvalidOutputError)
+    expect(entries.map(e => [e.type, e.success])).toEqual([
+      ['CLASSIFICATION', true],
+      ['SUGGESTED_REPLY', false],
+    ])
+  })
+
   it('logs an unavailable provider with zeros and rethrows', async () => {
     const entries: InteractionEntry[] = []
     const provider = {
@@ -69,6 +107,7 @@ describe('runTriage', () => {
 
 describe('triageTicket', () => {
   const ids: string[] = []
+  const userIds: string[] = []
   async function makeTicket() {
     const t = await prisma.ticket.create({
       data: {
@@ -85,6 +124,7 @@ describe('triageTicket', () => {
   afterAll(async () => {
     await prisma.aIInteraction.deleteMany({ where: { ticketId: { in: ids } } })
     await prisma.ticket.deleteMany({ where: { id: { in: ids } } })
+    await prisma.user.deleteMany({ where: { id: { in: userIds } } })
   })
 
   it('rejects for a missing ticket', async () => {
@@ -103,14 +143,24 @@ describe('triageTicket', () => {
     await expect(triageTicket(t.id, { provider })).rejects.toThrow()
     const rows = await prisma.aIInteraction.findMany({ where: { ticketId: t.id } })
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ success: false, provider: 'fake', response: '{"x":1}' })
+    expect(rows[0]).toMatchObject({
+      success: false,
+      provider: 'fake',
+      response: '{"x":1}',
+      inputTokens: 3,
+      outputTokens: 4,
+      latencyMs: 5,
+    })
     expect(rows[0]?.error).toBeTruthy()
   })
 
   it('logs both calls with provider and model on success', async () => {
     const t = await makeTicket()
-    const user = await prisma.user.findFirst()
-    const out = await triageTicket(t.id, { provider: respondWith('de'), userId: user?.id })
+    const user = await prisma.user.create({
+      data: { email: `ai-svc-${Date.now()}@example.com`, name: 'AI Svc', role: 'ADMIN' },
+    })
+    userIds.push(user.id)
+    const out = await triageTicket(t.id, { provider: respondWith('de'), userId: user.id })
     expect(out.customerLanguage).toBe('de')
     const rows = await prisma.aIInteraction.findMany({
       where: { ticketId: t.id },
@@ -122,7 +172,8 @@ describe('triageTicket', () => {
         success: true,
         provider: 'fake',
         model: 'fake',
-        userId: user?.id ?? null,
+        userId: user.id,
+        costUsd: 0,
       })
       expect(r.prompt.length).toBeGreaterThan(0)
     }

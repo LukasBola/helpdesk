@@ -1,5 +1,9 @@
-import type { StructuredRequest, StructuredResult } from './types'
-import { AiInvalidOutputError, type AiProvider } from './types'
+import {
+  AiInvalidOutputError,
+  type AiProvider,
+  type StructuredRequest,
+  type StructuredResult,
+} from './types'
 
 function defaultRespond(req: StructuredRequest<unknown>): unknown {
   if (req.kind === 'analysis') {

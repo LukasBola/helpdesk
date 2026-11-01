@@ -1,6 +1,7 @@
 import type { AIInteractionType, TicketPriority } from '@prisma/client'
 
 import { prisma } from '../db'
+import { logger } from '../lib/logger'
 import { buildAnalysisRequest, buildDraftRequest, type TicketInput } from './prompts'
 import { getAiProvider } from './provider'
 import { AiInvalidOutputError, type AiProvider, type StructuredRequest } from './types'
@@ -42,35 +43,40 @@ async function call<T>(
     model: provider.model,
     prompt: `${req.system}\n\n${req.user}`,
   }
+  let res
   try {
-    const res = await provider.generate(req)
-    await log({
-      ...base,
-      response: res.raw,
-      inputTokens: res.inputTokens,
-      outputTokens: res.outputTokens,
-      latencyMs: res.latencyMs,
-      success: true,
-    })
-    return res.data
+    res = await provider.generate(req)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    if (err instanceof AiInvalidOutputError) {
-      await log({ ...base, response: err.raw, ...err.usage, success: false, error: message })
-    } else {
-      // AiUnavailableError and anything unexpected: nothing came back from the model.
-      await log({
-        ...base,
-        response: '',
-        inputTokens: 0,
-        outputTokens: 0,
-        latencyMs: 0,
-        success: false,
-        error: message,
-      })
+    const failure: InteractionEntry =
+      err instanceof AiInvalidOutputError
+        ? { ...base, response: err.raw, ...err.usage, success: false, error: message }
+        : {
+            // AiUnavailableError and anything unexpected: nothing came back from the model.
+            ...base,
+            response: '',
+            inputTokens: 0,
+            outputTokens: 0,
+            latencyMs: 0,
+            success: false,
+            error: message,
+          }
+    try {
+      await log(failure)
+    } catch (logErr) {
+      logger.error({ err: logErr }, 'Failed to log AI interaction')
     }
     throw err
   }
+  await log({
+    ...base,
+    response: res.raw,
+    inputTokens: res.inputTokens,
+    outputTokens: res.outputTokens,
+    latencyMs: res.latencyMs,
+    success: true,
+  })
+  return res.data
 }
 
 export async function runTriage(
