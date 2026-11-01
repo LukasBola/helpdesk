@@ -16,6 +16,7 @@
     "prepare": "husky",
     "e2e": "playwright test -c e2e/playwright.config.ts && playwright test -c e2e/playwright.api.config.ts",
     "e2e:api": "playwright test -c e2e/playwright.api.config.ts",
+    "e2e:ollama": "E2E_OLLAMA=1 playwright test -c e2e/playwright.config.ts e2e/tests/ai-webhook.spec.ts",
     "e2e:headed": "E2E_SLOWMO=400 playwright test -c e2e/playwright.config.ts --headed --workers=1",
     "e2e:ui": "playwright test -c e2e/playwright.config.ts --ui",
     "e2e:reporter:test": "playwright test -c e2e/reporters/tests/playwright.config.ts",

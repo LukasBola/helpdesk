@@ -7,6 +7,7 @@ import { createCredentialUser } from '../src/lib/users'
 // Keep users and tickets in sync with e2e/fixtures/users.ts and e2e/fixtures/tickets.ts.
 //   tsx prisma/e2e-fixtures.ts seed
 //   tsx prisma/e2e-fixtures.ts block|unblock|user-id <email>
+//   tsx prisma/e2e-fixtures.ts delete-ticket <messageId>  (AI result goes with it, by cascade)
 const PASSWORD = process.env.E2E_PASSWORD ?? 'e2e-password-123'
 const TICKET_PREFIX = 'e2e-'
 
@@ -126,12 +127,18 @@ async function printUserId(email: string | undefined) {
   console.log(`E2E_USER_ID=${user.id}`)
 }
 
+async function deleteTicket(messageId: string | undefined) {
+  if (!messageId) throw new Error('messageId required')
+  await prisma.ticket.deleteMany({ where: { messageId } })
+}
+
 async function main() {
   const [command, arg] = process.argv.slice(2)
   if (command === 'seed') await seed()
   else if (command === 'block') await setBlocked(arg, true)
   else if (command === 'unblock') await setBlocked(arg, false)
   else if (command === 'user-id') await printUserId(arg)
+  else if (command === 'delete-ticket') await deleteTicket(arg)
   else throw new Error(`unknown command: ${command}`)
 }
 

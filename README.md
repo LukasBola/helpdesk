@@ -345,10 +345,13 @@ E2E_HEADLESS=true pnpm e2e   # run without a visible browser
 pnpm e2e --project=api       # API tests only
 pnpm e2e:headed              # watch the browser (slowed down by E2E_SLOWMO=400 ms)
 pnpm e2e:ui                  # Playwright UI mode
+pnpm e2e:ollama              # opt-in: webhook to AI panel on the real local model
 pnpm e2e:report              # open the last HTML report
 ```
 
 `E2E_HEADLESS` accepts `true` or `false`; the example `.env` sets it to `false`, while the default is `true` if the variable is unset. Set `E2E_SLOWMO` to the delay in milliseconds between browser actions when watching tests.
+
+`pnpm e2e:ollama` runs the real-model webhook test (`e2e/tests/ai-webhook.spec.ts`): an inbound e-mail posted to the Postmark webhook becomes a ticket and the real AI pipeline fills the panel. It needs Ollama running with the model pulled, takes about 1-3 minutes and heats the Mac. It is skipped in `pnpm e2e` (it runs only with `E2E_OLLAMA=1`).
 
 Structure: `e2e/pages/` holds the page objects (`LoginPage`, `AppShell`), `e2e/fixtures/` the users, tickets, API helpers and DB helpers (block/unblock a user). `e2e/tests/auth.setup.ts` logs in once per role and saves the session in `e2e/.auth/`. Reporters: step log (console, `e2e/reporters/step-log.ts`), HTML (`e2e/playwright-report/`), JUnit (`e2e/test-results/junit.xml`).
 
