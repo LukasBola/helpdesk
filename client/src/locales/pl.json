@@ -33,6 +33,7 @@
   },
   "language": {
     "label": "Język",
+    "aiLabel": "Język AI",
     "saveError": "Nie udało się zapisać języka na koncie."
   },
   "errors": {

@@ -11,9 +11,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useChangeLanguage } from '@/hooks/useLanguage'
+import { useChangeAiLanguage, useChangeLanguage } from '@/hooks/useLanguage'
 import { useLogout } from '@/hooks/useLogout'
 import { type AppLanguage, currentLanguage, LANGUAGES } from '@/i18n'
+import { aiLanguage } from '@/lib/ai'
 import type { SessionUser } from '@/lib/auth-client'
 
 function initials(name: string): string {
@@ -29,6 +30,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
   const { t } = useTranslation()
   const logout = useLogout()
   const { change, error } = useChangeLanguage()
+  const { change: changeAi, error: aiError } = useChangeAiLanguage()
 
   return (
     <DropdownMenu>
@@ -51,6 +53,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
         </DropdownMenuLabel>
         {/* Menu radio items, so arrow keys reach the language choice like any menu item. */}
         <DropdownMenuRadioGroup
+          aria-label={t('language.label')}
           value={currentLanguage()}
           onValueChange={value => void change(value as AppLanguage)}
         >
@@ -67,6 +70,31 @@ export function UserMenu({ user }: { user: SessionUser }) {
           ))}
         </DropdownMenuRadioGroup>
         {error && (
+          <p role="alert" className="px-2 py-1 text-xs text-rose-600">
+            {t('language.saveError')}
+          </p>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+          {t('language.aiLabel')}
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          aria-label={t('language.aiLabel')}
+          value={aiLanguage(user)}
+          onValueChange={value => void changeAi(value as AppLanguage)}
+        >
+          {LANGUAGES.map(lng => (
+            <DropdownMenuRadioItem
+              key={lng}
+              value={lng}
+              className="min-h-11 cursor-pointer"
+              onSelect={event => event.preventDefault()}
+            >
+              {lng.toUpperCase()}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        {aiError && (
           <p role="alert" className="px-2 py-1 text-xs text-rose-600">
             {t('language.saveError')}
           </p>

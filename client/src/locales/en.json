@@ -33,6 +33,7 @@
   },
   "language": {
     "label": "Language",
+    "aiLabel": "AI language",
     "saveError": "Could not save your language to your account."
   },
   "errors": {

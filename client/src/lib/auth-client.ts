@@ -10,6 +10,7 @@ export const authClient = createAuthClient({
         role: { type: ['AGENT', 'ADMIN'] },
         isBlocked: { type: 'boolean' },
         locale: { type: ['pl', 'en'], required: false },
+        aiLocale: { type: ['pl', 'en'], required: false },
       },
     }),
   ],

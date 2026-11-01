@@ -12,9 +12,12 @@ import {
   fetchTicketPage,
   patchTicket,
   postReply,
+  requestAi,
   type TicketListItem,
   type TicketUpdate,
 } from '@/lib/tickets-api'
+
+export const AI_POLL_MS = 3000
 
 export function useTicketList(query: Record<string, string>) {
   const result = useInfiniteQuery({
@@ -46,6 +49,7 @@ export function useTicket(id: string | undefined) {
     queryKey: ['tickets', 'detail', id],
     queryFn: () => fetchTicket(id as string),
     enabled: !!id,
+    refetchInterval: q => (q.state.data?.aiResult?.state === 'PENDING' ? AI_POLL_MS : false),
   })
 }
 
@@ -62,5 +66,13 @@ export function useCreateReply(id: string) {
   return useMutation({
     mutationFn: (body: string) => postReply(id, body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tickets'] }),
+  })
+}
+
+export function useRequestAi(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => requestAi(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tickets', 'detail', id] }),
   })
 }

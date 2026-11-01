@@ -35,6 +35,7 @@ function detail(over: Partial<TicketDetail> = {}): TicketDetail {
     body: 'Proszę o fakturę',
     history: [],
     replies: [],
+    aiResult: null,
     ...over,
   }
 }

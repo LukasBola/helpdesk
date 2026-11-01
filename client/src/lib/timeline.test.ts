@@ -26,6 +26,7 @@ function ticketWith(over: Partial<TicketDetail> = {}): TicketDetail {
     body: 'Hej',
     history: [],
     replies: [],
+    aiResult: null,
     ...over,
   }
 }

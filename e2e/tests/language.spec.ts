@@ -25,7 +25,10 @@ test('język wybrany na koncie wraca po wylogowaniu i na nowym urządzeniu', asy
   await expect(shell.greeting, 'Powitanie po zalogowaniu jest widoczne').toBeVisible()
 
   const menu = await shell.openUserMenu()
-  await menu.getByRole('menuitemradio', { name: 'EN' }).click()
+  await menu
+    .getByRole('group', { name: 'Język', exact: true })
+    .getByRole('menuitemradio', { name: 'EN' })
+    .click()
   await page.keyboard.press('Escape')
   await expect(page.getByText('Good morning,'), 'Interfejs jest po angielsku').toBeVisible()
 
