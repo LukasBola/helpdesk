@@ -1,9 +1,10 @@
 import { Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { useRequestAi } from '@/hooks/useTickets'
-import { aiLanguage, hasResults, isStalePending, summaryFor } from '@/lib/ai'
+import { AI_STALE_PENDING_MS, aiLanguage, hasResults, isStalePending, summaryFor } from '@/lib/ai'
 import { apiErrorKey } from '@/lib/api-error'
 import { useSession } from '@/lib/auth-client'
 import { getActiveUser } from '@/lib/session'
@@ -18,7 +19,19 @@ export function AiSummary({ ticket }: { ticket: TicketDetail }) {
   const { mutate, isPending, isError, error } = useRequestAi(ticket.id)
   const ai = ticket.aiResult
   const request = () => mutate()
+  const lang = aiLanguage(getActiveUser(data))
   const stale = !!ai && isStalePending(ai)
+  const [, setTick] = useState(0)
+  const pendingSince = ai?.state === 'PENDING' ? ai.updatedAt : null
+  // Poll responses that did not change keep the same data, so nothing re-renders when the
+  // stale cutoff passes; schedule that re-render ourselves.
+  useEffect(() => {
+    if (!pendingSince) return
+    const delay = Date.parse(pendingSince) + AI_STALE_PENDING_MS - Date.now()
+    if (delay < 0) return
+    const timer = setTimeout(() => setTick(n => n + 1), delay + 1000)
+    return () => clearTimeout(timer)
+  }, [pendingSince])
   const errorDetail = ai?.error && (
     <span className="block text-xs text-muted-foreground">{ai.error}</span>
   )
@@ -67,8 +80,8 @@ export function AiSummary({ ticket }: { ticket: TicketDetail }) {
     const regenerating = ai.state === 'PENDING'
     body = (
       <div className="flex flex-col gap-2">
-        <p className="whitespace-pre-wrap break-words text-sm">
-          {summaryFor(ai, aiLanguage(getActiveUser(data)))}
+        <p lang={lang} className="whitespace-pre-wrap break-words text-sm">
+          {summaryFor(ai, lang)}
         </p>
         {regenerating && (
           <p role="status" className="text-xs text-muted-foreground">

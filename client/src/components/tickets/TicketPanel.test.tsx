@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AxiosError } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -323,6 +323,49 @@ describe('TicketPanel', () => {
       renderRoute('/tickets/t1')
       await screen.findByText('AI analizuje…')
       expect(screen.queryByRole('button', { name: 'Spróbuj ponownie' })).not.toBeInTheDocument()
+    })
+
+    it('shows the retry button once a fresh PENDING goes stale, without new server data', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      try {
+        current = detail({
+          aiResult: ai({
+            state: 'PENDING',
+            completedAt: null,
+            summaryPl: null,
+            updatedAt: new Date().toISOString(),
+          }),
+        })
+        renderRoute('/tickets/t1')
+        await screen.findByText('AI analizuje…')
+        expect(screen.queryByRole('button', { name: 'Spróbuj ponownie' })).not.toBeInTheDocument()
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(15 * 60_000 + 5000)
+        })
+        expect(screen.getByRole('button', { name: 'Spróbuj ponownie' })).toBeInTheDocument()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('marks AI text with its language', async () => {
+      current = detail({
+        aiResult: ai({ customerLanguage: 'de', draft: 'Danke.', draftTranslationEn: 'Thanks.' }),
+      })
+      mockSession({ aiLocale: 'en' })
+      renderRoute('/tickets/t1')
+      expect(await screen.findByText('Customer did not get the invoice.')).toHaveAttribute(
+        'lang',
+        'en',
+      )
+      expect(screen.getByText('Danke.')).toHaveAttribute('lang', 'de')
+      expect(screen.getByText('Thanks.')).toHaveAttribute('lang', 'en')
+    })
+
+    it('omits lang on the draft when the customer language is unknown', async () => {
+      current = detail({ aiResult: ai({ customerLanguage: null, draft: 'Hallo.' }) })
+      renderRoute('/tickets/t1')
+      expect(await screen.findByText('Hallo.')).not.toHaveAttribute('lang')
     })
 
     it('enables regenerate for a stale PENDING with results', async () => {

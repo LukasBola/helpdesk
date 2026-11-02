@@ -4,7 +4,7 @@ import type { PgBoss } from 'pg-boss'
 import { prisma } from '../db'
 import { env } from '../env'
 import { logger } from '../lib/logger'
-import { requestAiTriage } from './aiTriage'
+import { enqueueAiTriage } from './aiTriage'
 
 export const EMAIL_JOB = 'process-email'
 
@@ -56,7 +56,7 @@ export function parsePostmarkPayload(
 
 export async function createTicketFromEmail(
   payload: PostmarkPayload,
-  requestTriage: typeof requestAiTriage = requestAiTriage,
+  enqueueTriage: typeof enqueueAiTriage = enqueueAiTriage,
 ): Promise<void> {
   const parsed = parsePostmarkPayload(payload, { ownDomain: env.OWN_DOMAIN })
 
@@ -74,6 +74,8 @@ export async function createTicketFromEmail(
         customerName: parsed.customerName,
         subject: parsed.subject,
         body: parsed.body,
+        // Created with the ticket so a detail fetched right away already shows PENDING.
+        aiResult: { create: { state: 'PENDING' } },
       },
     })
     ticketId = ticket.id
@@ -88,7 +90,7 @@ export async function createTicketFromEmail(
 
   // AI must never block or retry email intake.
   await Promise.resolve()
-    .then(() => requestTriage(ticketId))
+    .then(() => enqueueTriage(ticketId))
     .catch(err => logger.error({ err, ticketId }, 'AI enqueue failed'))
 }
 

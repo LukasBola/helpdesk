@@ -61,12 +61,9 @@ async function markPending(ticketId: string): Promise<boolean> {
   }
 }
 
-export async function requestAiTriage(
-  ticketId: string,
-  userId?: string,
-): Promise<'queued' | 'already-pending'> {
-  if (!(await markPending(ticketId))) return 'already-pending'
-
+// Sends the job for a row that is already PENDING. On failure the row becomes FAILED (previous
+// results are kept) so it is not stuck PENDING with no job behind it, and the error is rethrown.
+export async function enqueueAiTriage(ticketId: string, userId?: string): Promise<void> {
   try {
     const boss = await getQueue()
     await ensureAiQueue(boss)
@@ -74,7 +71,6 @@ export async function requestAiTriage(
     // No singletonKey: it is a no-op on a standard queue; dedup is the DB state machine (markPending).
     await boss.send(AI_JOB, data, AI_JOB_OPTIONS)
   } catch (err: unknown) {
-    // Don't leave the row stuck in PENDING with no job behind it.
     const message = `Enqueue failed: ${err instanceof Error ? err.message : String(err)}`
     await prisma.ticketAiResult
       .updateMany({
@@ -86,6 +82,14 @@ export async function requestAiTriage(
       )
     throw err
   }
+}
+
+export async function requestAiTriage(
+  ticketId: string,
+  userId?: string,
+): Promise<'queued' | 'already-pending'> {
+  if (!(await markPending(ticketId))) return 'already-pending'
+  await enqueueAiTriage(ticketId, userId)
   return 'queued'
 }
 
