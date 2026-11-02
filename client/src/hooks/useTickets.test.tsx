@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from '@/lib/api'
 import type { TicketListItem } from '@/lib/tickets-api'
 
-import { useCreateReply, useTicket, useTicketList } from './useTickets'
+import { AI_POLL_MS, useCreateReply, useRequestAi, useTicket, useTicketList } from './useTickets'
 
 vi.mock('@/lib/api', () => ({
   api: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
@@ -78,6 +78,42 @@ describe('useTicket', () => {
     const { wrapper } = setup()
     renderHook(() => useTicket(undefined), { wrapper })
     expect(get).not.toHaveBeenCalled()
+  })
+})
+
+describe('useTicket AI polling', () => {
+  const detail = (state: 'PENDING' | 'READY') => ({
+    data: { ...ticket('t1'), body: '', history: [], replies: [], aiResult: { state } },
+  })
+
+  it('polls while AI is PENDING and stops when READY', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      get.mockResolvedValueOnce(detail('PENDING')).mockResolvedValueOnce(detail('READY'))
+      const { wrapper } = setup()
+      const { result } = renderHook(() => useTicket('t1'), { wrapper })
+      await waitFor(() => expect(result.current.data?.aiResult?.state).toBe('PENDING'))
+      expect(get).toHaveBeenCalledTimes(1)
+      await act(() => vi.advanceTimersByTimeAsync(AI_POLL_MS))
+      await waitFor(() => expect(result.current.data?.aiResult?.state).toBe('READY'))
+      expect(get).toHaveBeenCalledTimes(2)
+      await act(() => vi.advanceTimersByTimeAsync(AI_POLL_MS * 3))
+      expect(get).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe('useRequestAi', () => {
+  it('posts and invalidates the ticket detail', async () => {
+    post.mockResolvedValue({ data: { state: 'PENDING' } })
+    const { client, wrapper } = setup()
+    const spy = vi.spyOn(client, 'invalidateQueries')
+    const { result } = renderHook(() => useRequestAi('t1'), { wrapper })
+    await act(() => result.current.mutateAsync())
+    expect(post).toHaveBeenCalledWith('/tickets/t1/ai')
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['tickets', 'detail', 't1'] })
   })
 })
 

@@ -2,6 +2,7 @@ import './env'
 
 import { app } from './app'
 import { env } from './env'
+import { registerAiWorker } from './jobs/aiTriage'
 import { registerEmailWorker } from './jobs/processEmail'
 import { getQueue, stopQueue } from './jobs/queue'
 import { logger } from './lib/logger'
@@ -9,6 +10,7 @@ import { logger } from './lib/logger'
 async function main() {
   const queue = await getQueue()
   await registerEmailWorker(queue)
+  await registerAiWorker(queue)
 
   const server = app.listen(env.PORT, () => {
     logger.info({ port: env.PORT }, 'Server started')

@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { refreshSession, signOut } from '@/lib/auth-client'
+import { refreshSession, signOut, updateUser } from '@/lib/auth-client'
 import { mockSession, renderRoute } from '@/test/render'
 
 // Dynamic import: a static one may evaluate after '@/lib/auth-client' is first imported.
@@ -88,5 +88,18 @@ describe('AppShell', () => {
     renderRoute('/tickets/mine')
     expect(screen.getByRole('link', { name: /Moje/ })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: /Tickety/ })).not.toHaveAttribute('aria-current')
+  })
+
+  it('user menu changes AI language independently of UI language', async () => {
+    vi.mocked(updateUser).mockResolvedValue({ data: {}, error: null } as never)
+    mockSession({ locale: 'pl', aiLocale: 'pl' })
+    renderRoute('/tickets')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Menu użytkownika' }))
+    const ai = within(screen.getByRole('group', { name: 'Język AI' }))
+    expect(ai.getByRole('menuitemradio', { name: 'PL' })).toHaveAttribute('aria-checked', 'true')
+    await user.click(ai.getByRole('menuitemradio', { name: 'EN' }))
+    expect(updateUser).toHaveBeenCalledWith({ aiLocale: 'en' })
+    expect(screen.getByText('Dzień dobry,')).toBeInTheDocument()
   })
 })

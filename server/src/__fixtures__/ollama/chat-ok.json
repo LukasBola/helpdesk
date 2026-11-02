@@ -1,0 +1,17 @@
+{
+  "model": "qwen3.8:27b-q4_K_M",
+  "created_at": "2026-11-01T20:52:03.177714Z",
+  "message": {
+    "role": "assistant",
+    "content": "{\n  \"priority\": \"URGENT\",\n  \"customerLanguage\": \"pl\",\n  \"summaryPl\": \"Drukarka sieciowa na drugim piętrze nie działa od rana (błąd 49.4C02). 12 pracowników potrzebuje wydruków do 15:00 na spotkanie z klientem.\",\n  \"summaryEn\": \"Network printer on the second floor has been down since morning (error 49.4C02). 12 employees need prints by 3 PM for a client meeting.\"\n}"
+  },
+  "done": true,
+  "done_reason": "stop",
+  "total_duration": 11014684833,
+  "load_duration": 960250,
+  "prompt_eval_count": 300,
+  "prompt_eval_cached_count": 0,
+  "prompt_eval_duration": 2222203000,
+  "eval_count": 123,
+  "eval_duration": 8692371000
+}

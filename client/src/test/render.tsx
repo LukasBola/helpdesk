@@ -41,6 +41,7 @@ export function mockSession(
           role: 'AGENT' as const,
           isBlocked: false,
           locale: null,
+          aiLocale: null,
           createdAt: new Date(),
           updatedAt: new Date(),
           ...user,

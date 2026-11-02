@@ -12,6 +12,7 @@ let openId: string
 let openId2: string
 let resolvedId: string
 let formId: string
+let aiId: string
 
 beforeAll(async () => {
   await createCredentialUser({
@@ -47,14 +48,23 @@ beforeAll(async () => {
   openId2 = (await mk('open2', 'OPEN')).id
   resolvedId = (await mk('resolved', 'RESOLVED')).id
   formId = (await mk('form', 'OPEN')).id
+  aiId = (await mk('ai', 'OPEN')).id
+  await createCredentialUser({
+    email: 'agent-ai-limit@test.com',
+    password: 'password123',
+    name: 'Limit',
+  })
 })
 
 afterAll(async () => {
-  const ids = [ticketId, openId, openId2, resolvedId, formId]
+  const ids = [ticketId, openId, openId2, resolvedId, formId, aiId]
+  await prisma.ticketAiResult.deleteMany({ where: { ticketId: { in: ids } } })
   await prisma.reply.deleteMany({ where: { ticketId: { in: ids } } })
   await prisma.ticketHistory.deleteMany({ where: { ticketId: { in: ids } } })
   await prisma.ticket.deleteMany({ where: { id: { in: ids } } })
-  await prisma.user.deleteMany({ where: { email: 'agent-ticket@test.com' } })
+  await prisma.user.deleteMany({
+    where: { email: { in: ['agent-ticket@test.com', 'agent-ai-limit@test.com'] } },
+  })
 })
 
 describe('GET /api/tickets', () => {
@@ -87,6 +97,73 @@ describe('GET /api/tickets/:id', () => {
   it('returns 404 for unknown id', async () => {
     const res = await request(app).get('/api/tickets/does-not-exist').set('Cookie', cookie)
     expect(res.status).toBe(404)
+  })
+
+  it('includes aiResult (null when none, fields when present)', async () => {
+    const before = await request(app).get(`/api/tickets/${aiId}`).set('Cookie', cookie)
+    expect(before.status).toBe(200)
+    expect(before.body.aiResult).toBeNull()
+
+    await prisma.ticketAiResult.create({
+      data: {
+        ticketId: aiId,
+        state: 'READY',
+        suggestedPriority: 'HIGH',
+        customerLanguage: 'en',
+        draft: 'Hello',
+        summaryPl: 'Streszczenie',
+        summaryEn: 'Summary',
+      },
+    })
+    const after = await request(app).get(`/api/tickets/${aiId}`).set('Cookie', cookie)
+    expect(after.body.aiResult).toMatchObject({
+      ticketId: aiId,
+      state: 'READY',
+      suggestedPriority: 'HIGH',
+      customerLanguage: 'en',
+      draft: 'Hello',
+      summaryPl: 'Streszczenie',
+      summaryEn: 'Summary',
+      error: null,
+    })
+    await prisma.ticketAiResult.delete({ where: { ticketId: aiId } })
+  })
+})
+
+describe('POST /api/tickets/:id/ai', () => {
+  it('queues triage and returns 202', async () => {
+    const res = await request(app).post(`/api/tickets/${aiId}/ai`).set('Cookie', cookie)
+    expect(res.status).toBe(202)
+    expect(res.body).toEqual({ state: 'PENDING' })
+    const row = await prisma.ticketAiResult.findUniqueOrThrow({ where: { ticketId: aiId } })
+    expect(row.state).toBe('PENDING')
+  })
+
+  it('returns 202 also when already pending', async () => {
+    const res = await request(app).post(`/api/tickets/${aiId}/ai`).set('Cookie', cookie)
+    expect(res.status).toBe(202)
+    expect(res.body).toEqual({ state: 'PENDING' })
+  })
+
+  it('returns 404 for an unknown ticket', async () => {
+    const res = await request(app).post('/api/tickets/does-not-exist/ai').set('Cookie', cookie)
+    expect(res.status).toBe(404)
+  })
+
+  it('requires a session', async () => {
+    const res = await request(app).post(`/api/tickets/${aiId}/ai`)
+    expect(res.status).toBe(401)
+  })
+
+  it('rate-limits per user', async () => {
+    const limitedCookie = await signIn('agent-ai-limit@test.com', 'password123')
+    for (let i = 0; i < 10; i++) {
+      const ok = await request(app).post(`/api/tickets/${aiId}/ai`).set('Cookie', limitedCookie)
+      expect(ok.status).toBe(202)
+    }
+    const res = await request(app).post(`/api/tickets/${aiId}/ai`).set('Cookie', limitedCookie)
+    expect(res.status).toBe(429)
+    expect(res.body).toEqual({ error: 'Too many requests' })
   })
 })
 

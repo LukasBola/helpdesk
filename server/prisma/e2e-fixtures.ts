@@ -7,6 +7,7 @@ import { createCredentialUser } from '../src/lib/users'
 // Keep users and tickets in sync with e2e/fixtures/users.ts and e2e/fixtures/tickets.ts.
 //   tsx prisma/e2e-fixtures.ts seed
 //   tsx prisma/e2e-fixtures.ts block|unblock|user-id <email>
+//   tsx prisma/e2e-fixtures.ts delete-ticket <messageId>  (AI result goes with it, by cascade)
 const PASSWORD = process.env.E2E_PASSWORD ?? 'e2e-password-123'
 const TICKET_PREFIX = 'e2e-'
 
@@ -21,6 +22,7 @@ const USERS = [
   { email: 'e2e-selfunblock@helpdesk.local', name: 'Sara Samoodblok', role: 'AGENT' as const },
   { email: 'e2e-account@helpdesk.local', name: 'Konrad Konto', role: 'AGENT' as const },
   { email: 'e2e-locale@helpdesk.local', name: 'Lucyna Język', role: 'AGENT' as const },
+  { email: 'e2e-ai@helpdesk.local', name: 'Alicja Ai', role: 'AGENT' as const },
 ]
 // Blocked for good at every seed.
 const LOCKED = 'e2e-locked@helpdesk.local'
@@ -38,6 +40,40 @@ const TICKETS: { key: string; subject: string; status: TicketStatus; priority: T
     { key: 'ui-reply', subject: 'E2E Do odpowiedzi', status: 'OPEN', priority: 'MEDIUM' },
     { key: 'ui-assign', subject: 'E2E Do przypisania w UI', status: 'OPEN', priority: 'LOW' },
   ]
+
+// Tickets with a ready-made AI state (the e2e suite never calls a model). Their customers use
+// @ai.example, so they stay out of the klient.example fixture set (see issue #19).
+const AI_TICKETS = [
+  {
+    key: 'ai-ready',
+    subject: 'E2E AI Gotowy wynik',
+    priority: 'MEDIUM' as const,
+    result: {
+      state: 'READY' as const,
+      suggestedPriority: 'URGENT' as const,
+      customerLanguage: 'de',
+      draft: 'Guten Tag, vielen Dank für Ihre Nachricht. Können Sie uns die Fehlermeldung senden?',
+      summaryPl: 'Klient zgłasza awarię logowania i prosi o pilną pomoc.',
+      summaryEn: 'The customer reports a login failure and asks for urgent help.',
+      draftTranslationPl:
+        'Dzień dobry, dziękujemy za wiadomość. Czy może Pan przesłać komunikat błędu?',
+      draftTranslationEn: 'Hello, thank you for your message. Could you send us the error message?',
+      completedAt: new Date(),
+    },
+  },
+  {
+    key: 'ai-failed',
+    subject: 'E2E AI Niepowodzenie',
+    priority: 'MEDIUM' as const,
+    result: { state: 'FAILED' as const, error: 'Ollama unavailable' },
+  },
+  {
+    key: 'ai-pending',
+    subject: 'E2E AI W toku',
+    priority: 'MEDIUM' as const,
+    result: { state: 'PENDING' as const },
+  },
+]
 
 async function seed() {
   // Recreate everything so a previous run (or a manual change) can't leak into this one:
@@ -62,6 +98,21 @@ async function seed() {
       },
     })
   }
+
+  for (const t of AI_TICKETS) {
+    await prisma.ticket.create({
+      data: {
+        subject: t.subject,
+        body: `Treść zgłoszenia: ${t.subject}`,
+        status: 'OPEN',
+        priority: t.priority,
+        customerEmail: `${t.key}@ai.example`,
+        customerName: `Klient ${t.key}`,
+        messageId: `${TICKET_PREFIX}${t.key}`,
+        aiResult: { create: t.result },
+      },
+    })
+  }
 }
 
 async function setBlocked(email: string | undefined, isBlocked: boolean) {
@@ -76,12 +127,19 @@ async function printUserId(email: string | undefined) {
   console.log(`E2E_USER_ID=${user.id}`)
 }
 
+async function deleteTicket(messageId: string | undefined) {
+  if (!messageId?.startsWith(TICKET_PREFIX))
+    throw new Error(`messageId must start with ${TICKET_PREFIX}`)
+  await prisma.ticket.deleteMany({ where: { messageId } })
+}
+
 async function main() {
   const [command, arg] = process.argv.slice(2)
   if (command === 'seed') await seed()
   else if (command === 'block') await setBlocked(arg, true)
   else if (command === 'unblock') await setBlocked(arg, false)
   else if (command === 'user-id') await printUserId(arg)
+  else if (command === 'delete-ticket') await deleteTicket(arg)
   else throw new Error(`unknown command: ${command}`)
 }
 

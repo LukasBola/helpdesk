@@ -61,6 +61,13 @@ export const USERS = {
     name: 'Lucyna Język',
     firstName: 'Lucyna',
   },
+  // Used only by the AI panel tests (switches UI and AI language).
+  ai: {
+    email: 'e2e-ai@helpdesk.local',
+    password: PASSWORD,
+    name: 'Alicja Ai',
+    firstName: 'Alicja',
+  },
   // Blocked by the seed and never unblocked.
   locked: {
     email: 'e2e-locked@helpdesk.local',

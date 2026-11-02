@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -19,6 +19,13 @@ async function openUserMenu(user: ReturnType<typeof userEvent.setup>) {
   const name = i18n.language === 'en' ? 'User menu' : 'Menu użytkownika'
   await user.click(screen.getByRole('button', { name }))
 }
+
+// The menu holds two radio groups (UI and AI language); pick the one by its label.
+function radio(group: RegExp, name: string) {
+  return within(screen.getByRole('group', { name: group })).getByRole('menuitemradio', { name })
+}
+const uiRadio = (name: string) => radio(/^(Język|Language)$/, name)
+const aiRadio = (name: string) => radio(/^(Język AI|AI language)$/, name)
 
 async function openUserMenuAgain(user: ReturnType<typeof userEvent.setup>) {
   if (!screen.queryByRole('menu')) await openUserMenu(user)
@@ -62,7 +69,7 @@ describe('language sync with the account', () => {
     renderRoute('/tickets')
     const user = userEvent.setup()
     await openUserMenu(user)
-    await user.click(screen.getByRole('menuitemradio', { name: 'EN' }))
+    await user.click(uiRadio('EN'))
     expect(updateUser).toHaveBeenCalledWith({ locale: 'en' })
     expect(screen.getByText('Good morning,')).toBeInTheDocument() // still EN with session.locale === 'pl'
     resolve()
@@ -74,7 +81,7 @@ describe('language sync with the account', () => {
     renderRoute('/tickets')
     const user = userEvent.setup()
     await openUserMenu(user)
-    await user.click(screen.getByRole('menuitemradio', { name: 'EN' }))
+    await user.click(uiRadio('EN'))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Could not save your language to your account.',
     )
@@ -90,7 +97,7 @@ describe('language sync with the account', () => {
     renderRoute('/tickets')
     const user = userEvent.setup()
     await openUserMenu(user)
-    await user.click(screen.getByRole('menuitemradio', { name: 'EN' }))
+    await user.click(uiRadio('EN'))
     expect(await screen.findByRole('alert')).toBeInTheDocument()
   })
   it('offers the account language as keyboard-reachable menu radio items', async () => {
@@ -99,11 +106,8 @@ describe('language sync with the account', () => {
     renderRoute('/tickets')
     const user = userEvent.setup()
     await openUserMenu(user)
-    expect(screen.getByRole('menuitemradio', { name: 'PL' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
-    screen.getByRole('menuitemradio', { name: 'EN' }).focus()
+    expect(uiRadio('PL')).toHaveAttribute('aria-checked', 'true')
+    uiRadio('EN').focus()
     await user.keyboard('{Enter}')
     expect(updateUser).toHaveBeenCalledWith({ locale: 'en' })
     expect(await screen.findByText('Good morning,')).toBeInTheDocument()
@@ -121,9 +125,9 @@ describe('language sync with the account', () => {
     renderRoute('/tickets')
     const user = userEvent.setup()
     await openUserMenu(user)
-    await user.click(screen.getByRole('menuitemradio', { name: 'EN' }))
+    await user.click(uiRadio('EN'))
     await openUserMenuAgain(user)
-    await user.click(screen.getByRole('menuitemradio', { name: 'PL' }))
+    await user.click(uiRadio('PL'))
     // The second save waits for the first one to finish.
     expect(updateUser).toHaveBeenCalledTimes(1)
     expect(updateUser).toHaveBeenLastCalledWith({ locale: 'en' })
@@ -131,5 +135,20 @@ describe('language sync with the account', () => {
     await vi.waitFor(() => expect(updateUser).toHaveBeenCalledTimes(2))
     expect(updateUser).toHaveBeenLastCalledWith({ locale: 'pl' })
     pending[1]()
+  })
+
+  it('useChangeAiLanguage saves aiLocale without changing the UI language', async () => {
+    vi.mocked(updateUser).mockResolvedValue({ data: {}, error: null } as never)
+    await i18n.changeLanguage('pl')
+    mockSession({ locale: 'pl', aiLocale: 'pl' })
+    renderRoute('/tickets')
+    const user = userEvent.setup()
+    await openUserMenu(user)
+    await user.click(aiRadio('EN'))
+    expect(updateUser).toHaveBeenCalledWith({ aiLocale: 'en' })
+    expect(updateUser).not.toHaveBeenCalledWith(
+      expect.objectContaining({ locale: expect.anything() }),
+    )
+    expect(i18n.language).toBe('pl')
   })
 })

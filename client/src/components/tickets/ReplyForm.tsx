@@ -1,11 +1,19 @@
 import { type FormEvent, type KeyboardEvent, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { AiDraft } from '@/components/tickets/AiDraft'
 import { Button } from '@/components/ui/button'
 import { useCreateReply } from '@/hooks/useTickets'
 import { apiErrorKey } from '@/lib/api-error'
+import type { TicketAiResult } from '@/lib/tickets-api'
 
-export function ReplyForm({ ticketId }: { ticketId: string }) {
+export function ReplyForm({
+  ticketId,
+  aiDraft,
+}: {
+  ticketId: string
+  aiDraft?: TicketAiResult | null
+}) {
   const { t } = useTranslation()
   const [text, setText] = useState('')
   const area = useRef<HTMLTextAreaElement>(null)
@@ -27,6 +35,12 @@ export function ReplyForm({ ticketId }: { ticketId: string }) {
     mutate(sent.trim(), { onSuccess: () => setText(current => (current === sent ? '' : current)) })
   }
 
+  const useDraft = (draft: string) => {
+    if (text.trim() !== '' && !window.confirm(t('ai.draft.replaceConfirm'))) return
+    setText(draft)
+    area.current?.focus()
+  }
+
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
     send()
@@ -41,6 +55,7 @@ export function ReplyForm({ ticketId }: { ticketId: string }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-2">
+      {aiDraft && <AiDraft result={aiDraft} onUse={useDraft} />}
       <textarea
         ref={area}
         value={text}

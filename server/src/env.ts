@@ -13,6 +13,10 @@ const schema = z
     POSTMARK_WEBHOOK_TOKEN: z.string().optional(),
     OWN_DOMAIN: z.string().optional(),
     RESEND_API_KEY: z.string().optional(),
+    AI_PROVIDER: z.enum(['ollama', 'claude', 'fake']).default('ollama'),
+    OLLAMA_HOST: z.string().min(1).default('http://localhost:11434'),
+    OLLAMA_MODEL: z.string().min(1).default('qwen3.8:27b-q4_K_M'),
+    AI_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
     // Origin of the SPA, trusted by Better Auth. Required in production.
     CLIENT_URL: z.preprocess(v => (v === '' ? undefined : v), z.string().url().optional()),
   })

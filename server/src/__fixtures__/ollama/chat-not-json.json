@@ -1,0 +1,12 @@
+{
+  "model": "qwen3.8:27b-q4_K_M",
+  "message": {
+    "role": "assistant",
+    "content": "Let me think about it. The priority is high."
+  },
+  "done": true,
+  "done_reason": "stop",
+  "total_duration": 1000000000,
+  "prompt_eval_count": 100,
+  "eval_count": 20
+}

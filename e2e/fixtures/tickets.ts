@@ -14,3 +14,12 @@ export const TICKETS = {
 
 // Every fixture's customer e-mail ends with this domain, which no real ticket uses.
 export const E2E_SEARCH = 'klient.example'
+
+// Tickets with seeded AI results; customers use @ai.example, outside E2E_SEARCH.
+export const AI_TICKETS = {
+  ready: { subject: 'E2E AI Gotowy wynik', priority: 'MEDIUM' },
+  failed: { subject: 'E2E AI Niepowodzenie', priority: 'MEDIUM' },
+  pending: { subject: 'E2E AI W toku', priority: 'MEDIUM' },
+} as const
+
+export const AI_SEARCH = 'ai.example'

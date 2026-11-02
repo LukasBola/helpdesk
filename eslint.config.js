@@ -25,6 +25,7 @@ export default tseslint.config(
             'server/vitest.config.ts',
             'server/prisma/seed.ts',
             'server/prisma/e2e-fixtures.ts',
+            'server/scripts/ai-try.ts',
           ],
         },
         tsconfigRootDir: import.meta.dirname,

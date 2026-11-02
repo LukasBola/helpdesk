@@ -65,4 +65,14 @@ export class TicketsPage {
     await this.replyBox(subject).fill(text)
     await this.panel(subject).getByRole('button', { name: 'Wyślij' }).click()
   }
+
+  @step
+  async applyPrioritySuggestion(subject: string, priorityLabel: string) {
+    const panel = this.panel(subject)
+    await expect(
+      panel.getByText(`AI proponuje: ${priorityLabel}`),
+      `Propozycja priorytetu „${priorityLabel}” jest widoczna`,
+    ).toBeVisible()
+    await panel.getByRole('button', { name: 'Zastosuj' }).click()
+  }
 }

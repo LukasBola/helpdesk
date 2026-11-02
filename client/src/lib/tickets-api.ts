@@ -39,8 +39,24 @@ export interface TicketReply {
   sentAt: string
   user: UserRef
 }
+export type AiState = 'PENDING' | 'READY' | 'FAILED'
+export interface TicketAiResult {
+  ticketId: string
+  state: AiState
+  error: string | null
+  suggestedPriority: TicketPriority | null
+  customerLanguage: string | null
+  draft: string | null
+  summaryPl: string | null
+  summaryEn: string | null
+  draftTranslationPl: string | null
+  draftTranslationEn: string | null
+  completedAt: string | null
+  updatedAt: string
+}
 export interface TicketDetail extends TicketListItem {
   body: string
+  aiResult: TicketAiResult | null
   history: TicketHistoryEntry[]
   replies: TicketReply[]
 }
@@ -84,6 +100,10 @@ export async function postReply(id: string, body: string): Promise<TicketReply> 
     body,
   })
   return data
+}
+
+export async function requestAi(id: string): Promise<void> {
+  await api.post(`/tickets/${encodeURIComponent(id)}/ai`)
 }
 
 export async function fetchUsers(): Promise<AppUser[]> {

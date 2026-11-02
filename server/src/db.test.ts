@@ -20,4 +20,26 @@ describe('database connection', () => {
     expect(Array.isArray(sessions)).toBe(true)
     expect(Array.isArray(accounts)).toBe(true)
   })
+
+  it('deleting a ticket removes its AI result and keeps the log', async () => {
+    const ticket = await prisma.ticket.create({
+      data: {
+        subject: 'AI cascade',
+        body: 'body',
+        customerEmail: 'cascade@example.com',
+        messageId: `<ai-cascade-${Date.now()}@example.com>`,
+      },
+    })
+    await prisma.ticketAiResult.create({ data: { ticketId: ticket.id, state: 'READY' } })
+    const interaction = await prisma.aIInteraction.create({
+      data: { ticketId: ticket.id, type: 'SUMMARY', prompt: 'p', response: 'r' },
+    })
+
+    await prisma.ticket.delete({ where: { id: ticket.id } })
+
+    expect(await prisma.ticketAiResult.findUnique({ where: { ticketId: ticket.id } })).toBeNull()
+    const kept = await prisma.aIInteraction.findUnique({ where: { id: interaction.id } })
+    expect(kept).not.toBeNull()
+    expect(kept?.ticketId).toBeNull()
+  })
 })

@@ -162,6 +162,28 @@ describe('POST /api/auth/update-user', () => {
     expect(res.status).toBe(200)
   })
 
+  it.each([['pl'], ['en']])('update-user accepts aiLocale %s', async aiLocale => {
+    const cookie = await signIn(EMAIL, PASSWORD)
+    const res = await request(app)
+      .post('/api/auth/update-user')
+      .set('Cookie', cookie)
+      .send({ aiLocale })
+    expect(res.status).toBe(200)
+    const session = await request(app).get('/api/auth/get-session').set('Cookie', cookie)
+    expect(session.body.user.aiLocale).toBe(aiLocale)
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: EMAIL } })
+    expect(user.aiLocale).toBe(aiLocale)
+  })
+
+  it.each([['de'], [''], [null], [42]])('update-user rejects aiLocale %j', async aiLocale => {
+    const cookie = await signIn(EMAIL, PASSWORD)
+    const res = await request(app)
+      .post('/api/auth/update-user')
+      .set('Cookie', cookie)
+      .send({ aiLocale })
+    expect(res.status).toBe(400)
+  })
+
   it('still rejects role changes through update-user', async () => {
     const cookie = await signIn(EMAIL, PASSWORD)
     await request(app).post('/api/auth/update-user').set('Cookie', cookie).send({ role: 'ADMIN' })

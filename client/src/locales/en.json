@@ -33,6 +33,7 @@
   },
   "language": {
     "label": "Language",
+    "aiLabel": "AI language",
     "saveError": "Could not save your language to your account."
   },
   "errors": {
@@ -106,5 +107,25 @@
     "MEDIUM": "Medium",
     "HIGH": "High",
     "URGENT": "Urgent"
+  },
+  "ai": {
+    "none": "No AI analysis yet",
+    "analyze": "Analyze",
+    "pending": "AI is analyzing…",
+    "unavailable": "AI unavailable",
+    "regenerate": "Regenerate",
+    "regenerating": "Generating a new version…",
+    "regenerateFailed": "Could not regenerate",
+    "summary": "AI summary",
+    "priority": {
+      "suggestion": "AI suggests: {{priority}}",
+      "apply": "Apply"
+    },
+    "draft": {
+      "title": "AI draft",
+      "use": "Use draft",
+      "translation": "Translation",
+      "replaceConfirm": "Replace the text you typed with the AI draft?"
+    }
   }
 }

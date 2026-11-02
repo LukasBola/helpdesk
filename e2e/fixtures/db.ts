@@ -24,4 +24,5 @@ export const db = {
   seed: () => fixtures('seed'),
   block: (email: string) => fixtures('block', email),
   unblock: (email: string) => fixtures('unblock', email),
+  deleteTicket: (messageId: string) => fixtures('delete-ticket', messageId),
 }

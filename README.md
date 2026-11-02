@@ -20,7 +20,7 @@ A full-stack support ticket management system that uses AI to automatically clas
 | Frontend | React, Vite, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query     |
 | Backend  | Express.js, TypeScript, Prisma, PostgreSQL, pgvector, pg-boss        |
 | Auth     | Better Auth (email + password, sessions in Postgres via Prisma)      |
-| AI       | Anthropic Claude API (direct SDK, structured output via Zod)         |
+| AI       | Ollama (local model, structured output via Zod); Claude planned      |
 | Email    | Postmark (inbound), Resend (outbound)                                |
 | Testing  | Vitest, React Testing Library, testcontainers, Playwright, promptfoo |
 | DevOps   | Docker, GitHub Actions, Railway                                      |
@@ -115,7 +115,7 @@ Open `.env` in your editor and set the three required variables:
   http://localhost:3000
   ```
 
-The remaining variables (`ANTHROPIC_API_KEY`, `POSTMARK_WEBHOOK_TOKEN`, `RESEND_API_KEY`) are only needed for AI and email features. The app starts without them. See [Environment variables](#environment-variables).
+The remaining variables (`POSTMARK_WEBHOOK_TOKEN`, `RESEND_API_KEY`) are only needed for email features, and AI needs no variables with the defaults (`ANTHROPIC_API_KEY` is reserved for a future Claude provider). The app starts without them. See [Environment variables](#environment-variables).
 
 > `.env` is in `.gitignore` and must never be committed. Never put real secrets or API keys in this README, `.env.example` or any other tracked file.
 
@@ -205,6 +205,95 @@ docker compose down
 - **Login fails with the default credentials**: the seed has not run. Run step 6.
 - **`Environment variable not found`**: `.env` is missing or not in the repository root. Repeat step 3.
 
+### AI (Ollama)
+
+AI runs on a local model through [Ollama](https://ollama.com). No API key is needed, and the email text never leaves your machine. Without Ollama the app still works: tickets are created, and the AI panel shows "AI unavailable".
+
+1. Install and start Ollama:
+
+   ```bash
+   brew install ollama
+   brew services start ollama
+   ```
+
+2. Pull the model (about 17 GB):
+
+   ```bash
+   ollama pull qwen3.8:27b-q4_K_M
+   ```
+
+   For development on a weaker machine, a small model is enough (lower quality). Pull it and set `OLLAMA_MODEL=qwen3:8b` in `.env`:
+
+   ```bash
+   ollama pull qwen3:8b
+   ```
+
+3. Check that it answers (the first call loads the model, about 10 seconds):
+
+   ```bash
+   pnpm --filter server ai:try
+   ```
+
+   The script runs the real model on three sample tickets (`server/src/__fixtures__/ai-samples/`) and prints the results and timings. It does not write to the database. A summary and a draft with translations take 20-50 seconds per ticket. With `--record` it also saves the raw analysis response as the test fixture `server/src/__fixtures__/ollama/chat-ok.json`.
+
+> Use the `qwen3.8:27b-q4_K_M` (GGUF) tag. The MLX variants and the bare `qwen3.8:27b` tag (`nvfp4`) do not support forced JSON output: Ollama answers `structured output is unavailable`, and AI fails for every ticket.
+
+`AI_PROVIDER` values:
+
+- `ollama` (default): the local model described above.
+- `fake`: fixed answers without any model, used for tests.
+- `claude`: not implemented yet. The server starts normally, but every AI call fails with `Claude provider not implemented`, so tickets show "AI unavailable".
+
+The variables are listed in [Environment variables](#environment-variables). The decision is described in [ADR-0017](docs/adr/0017-dostawca-ai-ollama-domyslnie.md).
+
+#### Everyday Ollama commands
+
+- Is the service running:
+
+  ```bash
+  brew services list | grep ollama
+  ```
+
+- Which model is loaded in memory, on CPU or GPU, and until when:
+
+  ```bash
+  ollama ps
+  ```
+
+- Free the memory right away (otherwise Ollama unloads the model about 5 minutes after the last call):
+
+  ```bash
+  ollama stop qwen3.8:27b-q4_K_M
+  ```
+
+- Stop or start the service. While it is stopped there is no AI: tickets are still created and the AI panel shows "AI unavailable".
+
+  ```bash
+  brew services stop ollama
+  brew services start ollama
+  ```
+
+- List downloaded models with their size, and remove one:
+
+  ```bash
+  ollama list
+  ollama rm <name>
+  ```
+
+- Update Ollama:
+
+  ```bash
+  brew upgrade ollama && brew services restart ollama
+  ```
+
+- Follow the log:
+
+  ```bash
+  tail -f "$(brew --prefix)/var/log/ollama.log"
+  ```
+
+> While a ticket is being analysed, the Mac works hard (GPU at 100%) for about 30-50 seconds. This is expected.
+
 ### Environment variables
 
 | Variable                 | Required           | Description                                                                                    |
@@ -213,10 +302,14 @@ docker compose down
 | `BETTER_AUTH_SECRET`     | Yes                | Min 32 characters, used to sign session cookies                                                |
 | `BETTER_AUTH_URL`        | Yes                | Backend base URL, e.g. `http://localhost:3000`                                                 |
 | `CLIENT_URL`             | Production only    | Frontend origin trusted by Better Auth; defaults to `http://localhost:5173` outside production |
-| `ANTHROPIC_API_KEY`      | For AI features    | Claude API key                                                                                 |
+| `ANTHROPIC_API_KEY`      | No                 | Reserved for `AI_PROVIDER=claude`, which is not implemented yet; currently unused              |
 | `POSTMARK_WEBHOOK_TOKEN` | For inbound email  | Postmark webhook validation token                                                              |
 | `RESEND_API_KEY`         | For outbound email | Resend API key for sending replies                                                             |
 | `PORT`                   | No                 | Backend port, defaults to `3000`                                                               |
+| `AI_PROVIDER`            | No                 | `ollama` (default), `claude` or `fake`; see [AI (Ollama)](#ai-ollama)                          |
+| `OLLAMA_HOST`            | No                 | Ollama address, defaults to `http://localhost:11434`                                           |
+| `OLLAMA_MODEL`           | No                 | Model name, defaults to `qwen3.8:27b-q4_K_M`                                                   |
+| `AI_TIMEOUT_MS`          | No                 | Timeout of one AI call in milliseconds, defaults to `120000`                                   |
 
 ## Testing
 
@@ -252,10 +345,13 @@ E2E_HEADLESS=true pnpm e2e   # run without a visible browser
 pnpm e2e --project=api       # API tests only
 pnpm e2e:headed              # watch the browser (slowed down by E2E_SLOWMO=400 ms)
 pnpm e2e:ui                  # Playwright UI mode
+pnpm e2e:ollama              # opt-in: webhook to AI panel on the real local model
 pnpm e2e:report              # open the last HTML report
 ```
 
 `E2E_HEADLESS` accepts `true` or `false`; the example `.env` sets it to `false`, while the default is `true` if the variable is unset. Set `E2E_SLOWMO` to the delay in milliseconds between browser actions when watching tests.
+
+`pnpm e2e:ollama` runs the real-model webhook test (`e2e/tests/ai-webhook.spec.ts`): an inbound e-mail posted to the Postmark webhook becomes a ticket and the real AI pipeline fills the panel. It needs Ollama running with the model pulled, takes about 1-3 minutes and heats the Mac. It is skipped in `pnpm e2e` (it runs only with `E2E_OLLAMA=1`). Do not run it in parallel with a full `pnpm e2e`: it shares the `ai` user with `ai.spec.ts`, which changes that account's languages.
 
 Structure: `e2e/pages/` holds the page objects (`LoginPage`, `AppShell`), `e2e/fixtures/` the users, tickets, API helpers and DB helpers (block/unblock a user). `e2e/tests/auth.setup.ts` logs in once per role and saves the session in `e2e/.auth/`. Reporters: step log (console, `e2e/reporters/step-log.ts`), HTML (`e2e/playwright-report/`), JUnit (`e2e/test-results/junit.xml`).
 

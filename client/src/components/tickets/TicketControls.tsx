@@ -1,5 +1,7 @@
+import { Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -9,6 +11,7 @@ import {
 } from '@/components/ui/select'
 import { useUpdateTicket } from '@/hooks/useTickets'
 import { useUsers } from '@/hooks/useUsers'
+import { hasResults } from '@/lib/ai'
 import { apiErrorKey } from '@/lib/api-error'
 import type { TicketDetail, TicketPriority, TicketStatus } from '@/lib/tickets-api'
 
@@ -24,6 +27,12 @@ export function TicketControls({ ticket }: { ticket: TicketDetail }) {
 
   // A blocked agent is offered only while they are the current value.
   const agents = users.filter(u => !u.isBlocked || u.id === ticket.assigneeId)
+
+  const ai = ticket.aiResult
+  const suggested =
+    ai && hasResults(ai) && ai.suggestedPriority && ai.suggestedPriority !== ticket.priority
+      ? ai.suggestedPriority
+      : null
 
   return (
     <div className="flex flex-col gap-2">
@@ -87,6 +96,21 @@ export function TicketControls({ ticket }: { ticket: TicketDetail }) {
           </Select>
         </div>
       </div>
+      {suggested && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-violet-400 bg-violet-50 px-3 py-2 text-sm">
+          <Sparkles className="h-4 w-4 text-violet-700" aria-hidden />
+          <span>{t('ai.priority.suggestion', { priority: t(`priority.${suggested}`) })}</span>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 rounded-xl"
+            disabled={isPending}
+            onClick={() => mutate({ priority: suggested })}
+          >
+            {t('ai.priority.apply')}
+          </Button>
+        </div>
+      )}
       {isError && (
         <p role="alert" className="text-sm text-destructive">
           {t(apiErrorKey(error))}

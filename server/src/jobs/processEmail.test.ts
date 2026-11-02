@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 
 import autoResponder from '../__fixtures__/postmark/auto-responder.json'
 import deliveryReceipt from '../__fixtures__/postmark/delivery-receipt.json'
@@ -12,8 +12,10 @@ import plainText from '../__fixtures__/postmark/plain-text.json'
 import plusAddress from '../__fixtures__/postmark/plus-address.json'
 import unicodeSubject from '../__fixtures__/postmark/unicode-subject.json'
 import { prisma } from '../db'
+import { AI_JOB } from './aiTriage'
 import type { PostmarkPayload } from './processEmail'
-import { parsePostmarkPayload } from './processEmail'
+import { createTicketFromEmail, parsePostmarkPayload } from './processEmail'
+import { getQueue, stopQueue } from './queue'
 
 describe('parsePostmarkPayload', () => {
   it('extracts ticket fields from Postmark payload', () => {
@@ -172,5 +174,87 @@ describe('expanded fixture tests', () => {
     const result = parsePostmarkPayload(plusAddress as PostmarkPayload)
     expect(result?.customerEmail).toBe('student@example.com')
     expect(result?.messageId).toBe('fixture-plus@mail.postmarkapp.com')
+  })
+})
+
+describe('createTicketFromEmail AI hook', () => {
+  const ids = ['ai-hook-1@test.com', 'ai-hook-2@test.com']
+  const payload = (MessageID: string): PostmarkPayload => ({
+    MessageID,
+    From: 'c@test.com',
+    FromFull: { Email: 'c@test.com', Name: 'Customer' },
+    Subject: 'AI hook',
+    TextBody: 'Please help.',
+    HtmlBody: '',
+    To: 'support@helpdesk.com',
+  })
+
+  afterAll(async () => {
+    await prisma.ticket.deleteMany({ where: { messageId: { in: ids } } })
+    await stopQueue()
+  })
+
+  it('queues AI triage for a new ticket', async () => {
+    await createTicketFromEmail(payload(ids[0]))
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { messageId: ids[0] } })
+    const result = await prisma.ticketAiResult.findUnique({ where: { ticketId: ticket.id } })
+    expect(result?.state).toBe('PENDING')
+  })
+
+  it('creates the PENDING row atomically with the ticket, before any enqueue', async () => {
+    const id = 'ai-hook-4@test.com'
+    ids.push(id)
+    let seen: string | undefined
+    const enqueue = vi.fn().mockImplementation(async (ticketId: string) => {
+      seen = (await prisma.ticketAiResult.findUnique({ where: { ticketId } }))?.state
+      return new Promise<void>(() => undefined)
+    })
+    void createTicketFromEmail(payload(id), enqueue)
+    await vi.waitFor(() => expect(enqueue).toHaveBeenCalledOnce())
+    expect(seen).toBe('PENDING')
+  })
+
+  it('sends the AI job for a new ticket', async () => {
+    const id = 'ai-hook-5@test.com'
+    ids.push(id)
+    const boss = await getQueue()
+    await boss.createQueue(AI_JOB)
+    const send = vi.spyOn(boss, 'send')
+    await createTicketFromEmail(payload(id))
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { messageId: id } })
+    expect(send).toHaveBeenCalledWith(AI_JOB, { ticketId: ticket.id }, expect.anything())
+    send.mockRestore()
+  })
+
+  it('marks the row FAILED when the real enqueue fails, ticket stays', async () => {
+    const id = 'ai-hook-6@test.com'
+    ids.push(id)
+    const boss = await getQueue()
+    const send = vi.spyOn(boss, 'send').mockRejectedValueOnce(new Error('db down'))
+    await createTicketFromEmail(payload(id))
+    send.mockRestore()
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { messageId: id } })
+    const row = await prisma.ticketAiResult.findUniqueOrThrow({ where: { ticketId: ticket.id } })
+    expect(row.state).toBe('FAILED')
+    expect(row.error).toContain('db down')
+  })
+
+  it('ticket is created even when AI enqueue fails', async () => {
+    const failingRequest = vi.fn().mockRejectedValue(new Error('queue down'))
+    await createTicketFromEmail(payload(ids[1]), failingRequest)
+    expect(failingRequest).toHaveBeenCalledOnce()
+    const ticket = await prisma.ticket.findUnique({ where: { messageId: ids[1] } })
+    expect(ticket).not.toBeNull()
+  })
+
+  it('processing the same payload twice requests triage exactly once', async () => {
+    const id = 'ai-hook-3@test.com'
+    ids.push(id)
+    const request = vi.fn().mockResolvedValue('queued')
+    await createTicketFromEmail(payload(id), request)
+    await createTicketFromEmail(payload(id), request)
+    expect(request).toHaveBeenCalledTimes(1)
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { messageId: id } })
+    expect(await prisma.ticketAiResult.count({ where: { ticketId: ticket.id } })).toBe(1)
   })
 })
